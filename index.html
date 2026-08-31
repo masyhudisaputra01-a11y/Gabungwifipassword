@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<script>
+(function(){
+  try{
+    var theme = localStorage.getItem('sj_theme_v1') || localStorage.getItem('wv_theme_v1') || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){}
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>SIM Jaringan &amp; WiFi Vault — Polda Sulbar</title>
+<meta name="theme-color" content="#05070A">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SIM Jaringan+">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700;8..60,800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-950:#05070A; --navy-900:#0A0F16; --navy-800:#111926; --navy-700:#1A2536;
+    --gold:#22D3EE; --gold-deep:#0BA5C4; --gold-soft:#8CEEF9;
+    --paper:#0A0E13; --card:#131920; --card-alt:#1A222B;
+    --ink:#E7EDF3; --ink-soft:#93A1AF; --ink-faint:#5C6875;
+    --line:#232C37;
+    --font-display: "Source Serif 4", ui-serif, Georgia, serif;
+    --font-body: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  html[data-theme="light"]{
+    --navy-950:#071427; --navy-900:#0B1F3A; --navy-800:#142A4D;
+    --paper:#F4F1EA; --card:#FFFFFF; --card-alt:#F1EEE6;
+    --ink:#1B2430; --ink-soft:#5B6472; --ink-faint:#8991A0;
+    --line:#E5DFD1;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:var(--font-body);
+    -webkit-tap-highlight-color:transparent; overscroll-behavior-y:none;
+    display:flex; flex-direction:column;
+  }
+  #hubBar{
+    position:relative; z-index:10; flex-shrink:0;
+    background:linear-gradient(160deg,var(--navy-900) 0%, var(--navy-950) 100%);
+    border-bottom:2px solid var(--gold);
+    padding:calc(10px + env(safe-area-inset-top)) 12px 10px;
+    display:flex; align-items:center; gap:10px;
+    box-shadow:0 4px 16px -6px rgba(0,0,0,.5);
+  }
+  #hubBrand{
+    display:flex; align-items:center; gap:8px; flex-shrink:0; color:#fff;
+  }
+  #hubBrand .dot{width:9px; height:9px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px 1px rgba(34,211,238,.7);}
+  #hubBrand span{font-family:var(--font-display); font-size:13.5px; font-weight:700; letter-spacing:.2px; white-space:nowrap;}
+  #switcher{
+    flex:1; display:flex; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+    border-radius:12px; padding:3px; gap:3px;
+  }
+  #switcher button{
+    flex:1; border:none; background:none; color:var(--ink-soft); font-family:inherit;
+    font-size:12.5px; font-weight:700; padding:9px 6px; border-radius:9px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;
+    transition:background .18s, color .18s;
+  }
+  #switcher button.active{ background:linear-gradient(160deg, var(--gold), var(--gold-deep)); color:#04121A; }
+  #switcher button svg{width:15px; height:15px; flex-shrink:0;}
+  #frames{ position:relative; flex:1; min-height:0; }
+  #frames iframe{
+    position:absolute; inset:0; width:100%; height:100%; border:none;
+    background:var(--paper); visibility:hidden; pointer-events:none;
+  }
+  #frames iframe.active{ visibility:visible; pointer-events:auto; }
+  #frameLoading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:10px; color:var(--ink-faint); font-size:12.5px; background:var(--paper); z-index:5;
+  }
+  #frameLoading.hidden{ display:none; }
+  .spinner{width:26px; height:26px; border-radius:50%; border:2.5px solid var(--line); border-top-color:var(--gold); animation:spin .8s linear infinite;}
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="hubBar">
+  <div id="hubBrand">
+    <div class="dot"></div>
+    <span>Polda Sulbar</span>
+  </div>
+  <div id="switcher">
+    <button type="button" id="btnJaringan" class="active" data-app="jaringan">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 19.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" fill="currentColor"/><path d="M8.3 13.6a5.2 5.2 0 017.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4.5 10a10 10 0 0115 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".6"/><circle cx="5" cy="5" r="2" fill="currentColor"/><circle cx="19" cy="5" r="2" fill="currentColor"/><path d="M6.4 6.2L10 9M17.6 6.2L14 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      Data Jaringan
+    </button>
+    <button type="button" id="btnWifi" data-app="wifi">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 19.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" fill="currentColor"/><path d="M8.3 13.6a5.2 5.2 0 017.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5.3 10.6a9.4 9.4 0 0113.4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg>
+      WiFi Vault
+    </button>
+  </div>
+</div>
+
+<div id="frames">
+  <div id="frameLoading"><div class="spinner"></div><div>Memuat...</div></div>
+  <iframe id="ifJaringan" title="Data Jaringan" src="app-jaringan.html" allow="clipboard-write; clipboard-read"></iframe>
+  <iframe id="ifWifi" title="WiFi Vault" data-src="app-wifi.html" allow="clipboard-write; clipboard-read"></iframe>
+</div>
+
+<script>
+const HUB_KEY = 'hub_last_app_v1';
+const btnJaringan = document.getElementById('btnJaringan');
+const btnWifi = document.getElementById('btnWifi');
+const ifJaringan = document.getElementById('ifJaringan');
+const ifWifi = document.getElementById('ifWifi');
+const loading = document.getElementById('frameLoading');
+
+let wifiLoaded = false;
+
+function activate(app){
+  try{ localStorage.setItem(HUB_KEY, app); }catch(e){}
+  if(app === 'wifi'){
+    btnWifi.classList.add('active'); btnJaringan.classList.remove('active');
+    ifWifi.classList.add('active'); ifJaringan.classList.remove('active');
+    if(!wifiLoaded){
+      loading.classList.remove('hidden');
+      ifWifi.src = ifWifi.dataset.src;
+      ifWifi.addEventListener('load', () => { loading.classList.add('hidden'); }, { once:true });
+      wifiLoaded = true;
+    }
+  } else {
+    btnJaringan.classList.add('active'); btnWifi.classList.remove('active');
+    ifJaringan.classList.add('active'); ifWifi.classList.remove('active');
+  }
+}
+
+btnJaringan.addEventListener('click', () => activate('jaringan'));
+btnWifi.addEventListener('click', () => activate('wifi'));
+
+ifJaringan.addEventListener('load', () => { loading.classList.add('hidden'); }, { once:true });
+
+let initial = 'jaringan';
+try{ initial = localStorage.getItem(HUB_KEY) || 'jaringan'; }catch(e){}
+activate(initial);
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

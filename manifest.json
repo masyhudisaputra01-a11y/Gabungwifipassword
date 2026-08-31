@@ -1,0 +1,15 @@
+{
+  "name": "SIM Jaringan & WiFi Vault — Polda Sulbar",
+  "short_name": "SIM Jaringan+",
+  "description": "Database jaringan HSI/internet dan WiFi Vault Polda Sulbar — dalam satu aplikasi.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05070A",
+  "theme_color": "#05070A",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
