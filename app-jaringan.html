@@ -5,7 +5,8 @@
 <script>
 (function(){
   try{
-    var theme = localStorage.getItem('sj_theme_v1') || 'dark';
+    var params = new URLSearchParams(location.search);
+    var theme = params.get('theme') || localStorage.getItem('hub_theme_v1') || localStorage.getItem('sj_theme_v1') || 'dark';
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-density', localStorage.getItem('sj_density_v1') || 'comfortable');
     document.documentElement.setAttribute('data-header-bg', localStorage.getItem('sj_headerbg_v1') || 'network');
@@ -974,6 +975,20 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 
+/* ---------------- HUB INTEGRATION (dipanggil dari index.html) ---------------- */
+window.hubGoToSearch = function(query){
+  document.querySelector('button[data-view="data"]').click();
+  state.search = String(query||'').trim().toLowerCase();
+  document.getElementById('searchInput').value = query||'';
+  renderData();
+};
+window.hubGetSummary = function(){
+  const overdue = records.filter(r=>{ const d = daysUntil(r['Tanggal Berakhir Kontrak']); return d !== null && d < 0; }).length;
+  const soon = records.filter(r=>{ const d = daysUntil(r['Tanggal Berakhir Kontrak']); return d !== null && d >= 0 && d <= 30; }).length;
+  const locs = new Set(records.map(r=>r['Lokasi']).filter(Boolean));
+  return { total: records.length, overdue, soon, locCount: locs.size };
+};
+
 /* ---------------- CLOCK ---------------- */
 function tickClock(){
   const d = new Date();
@@ -997,10 +1012,19 @@ const ACCENTS = {
   emerald: { name:'Emerald',     gold:'#34D399', deep:'#1FA37A', soft:'#8FEFC9' },
   gold:    { name:'Klasik Emas', gold:'#C9974C', deep:'#A87830', soft:'#E4C990' },
 };
-function applyTheme(theme){
+function applyTheme(theme, _fromHub){
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem(THEME_KEY, theme);
+  if(!_fromHub){
+    try{ localStorage.setItem('hub_theme_v1', theme); }catch(e){}
+  }
 }
+window.addEventListener('storage', (e)=>{
+  if(e.key === 'hub_theme_v1' && e.newValue && e.newValue !== currentTheme()){
+    applyTheme(e.newValue, true);
+    if(document.getElementById('modalSheet') && document.getElementById('modalSheet').innerHTML.includes('theme-toggle')) openSettings();
+  }
+});
 function applyAccent(key){
   const a = ACCENTS[key] || ACCENTS.cyan;
   const s = document.documentElement.style;
@@ -1078,7 +1102,11 @@ document.getElementById('lockForgotBtn').addEventListener('click', ()=>{
     showToast('PIN dihapus. Atur PIN baru lewat menu Pengaturan.');
   }
 });
+function isHubManaged(){
+  return new URLSearchParams(location.search).get('hublock') === '1';
+}
 function showLockIfNeeded(){
+  if(isHubManaged()) return;
   if(hasPinSet()){
     _lockBuffer = '';
     renderLockDots();
@@ -1150,10 +1178,14 @@ function openSettings(){
 
     <div class="settings-section">
       <h3>Kunci PIN Aplikasi</h3>
+      ${isHubManaged() ? `
+      <div class="pin-status-row" style="display:block;">
+        <span>PIN dikelola dari Menu Utama<small>Buka Pengaturan di layar utama (Hub) untuk atur PIN Admin/Staff yang berlaku untuk semua modul.</small></span>
+      </div>` : `
       <div class="pin-status-row">
         <span>${pinSet ? 'PIN aktif' : 'PIN belum diatur'}<small>${pinSet ? 'Aplikasi terkunci saat dibuka' : 'Siapa saja bisa membuka aplikasi ini'}</small></span>
         <button type="button" class="btn-secondary" style="width:auto; margin:0; padding:9px 14px;" id="pinManageBtn">${pinSet ? 'Ubah / Hapus' : 'Atur PIN'}</button>
-      </div>
+      </div>`}
     </div>
 
     <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
@@ -1190,7 +1222,7 @@ function openSettings(){
       openSettings();
     });
   });
-  document.getElementById('pinManageBtn').addEventListener('click', openPinManager);
+  if(document.getElementById('pinManageBtn')) document.getElementById('pinManageBtn').addEventListener('click', openPinManager);
 }
 document.getElementById('settingsBtn').addEventListener('click', openSettings);
 
@@ -2260,6 +2292,7 @@ function startGdriveBackup(){
 
 document.getElementById('gdriveBackupBtn').addEventListener('click', startGdriveBackup);
 renderGdriveStatus();
+window.hubDriveUpload = startGdriveBackup;
 
 /* ---------------- PRINT REPORT ---------------- */
 const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];

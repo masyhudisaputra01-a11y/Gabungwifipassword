@@ -5,7 +5,8 @@
 <script>
 (function(){
   try{
-    var theme = localStorage.getItem('wv_theme_v1') || 'dark';
+    var params = new URLSearchParams(location.search);
+    var theme = params.get('theme') || localStorage.getItem('hub_theme_v1') || localStorage.getItem('wv_theme_v1') || 'dark';
     document.documentElement.setAttribute('data-theme', theme);
   }catch(e){}
 })();
@@ -370,6 +371,22 @@ function switchTab(tab){
   if(tab === 'settings') renderSettings();
 }
 document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+/* ================= HUB INTEGRATION (dipanggil dari index.html) ================= */
+function isHubManaged(){
+  return new URLSearchParams(location.search).get('hublock') === '1';
+}
+window.hubGoToSearch = function(query){
+  switchTab('data');
+  dataFilter.search = query || '';
+  const inp = document.getElementById('searchInput');
+  if(inp) inp.value = query || '';
+  renderWifiList();
+};
+window.hubGetSummary = function(){
+  const locs = new Set(records.map(r => (r.lokasi||'').trim()).filter(Boolean));
+  return { total: records.length, locCount: locs.size };
+};
 
 /* ================= ICONS ================= */
 const ICON_WIFI = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 19.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" fill="currentColor"/><path d="M8.3 13.6a5.2 5.2 0 017.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5.3 10.6a9.4 9.4 0 0113.4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg>';
@@ -804,11 +821,19 @@ function confirmClearAll(){
 }
 
 /* ================= THEME ================= */
-function setTheme(t){
+function setTheme(t, _fromHub){
   localStorage.setItem(THEME_KEY, t);
   document.documentElement.setAttribute('data-theme', t);
+  if(!_fromHub){
+    try{ localStorage.setItem('hub_theme_v1', t); }catch(e){}
+  }
   renderSettings();
 }
+window.addEventListener('storage', (e) => {
+  if(e.key === 'hub_theme_v1' && e.newValue && e.newValue !== localStorage.getItem(THEME_KEY)){
+    setTheme(e.newValue, true);
+  }
+});
 
 /* ================= SETTINGS ================= */
 function renderSettings(){
@@ -840,6 +865,10 @@ function renderSettings(){
 
     <div class="section-title">Keamanan</div>
     <div class="card">
+      ${isHubManaged() ? `
+      <div class="settings-item" style="display:block;">
+        <span>PIN dikelola dari Menu Utama<small>Buka Pengaturan di layar utama (Hub) untuk atur PIN Admin/Staff yang berlaku untuk semua modul.</small></span>
+      </div>` : `
       <div class="settings-item">
         <span>PIN Admin<small>${adminSet ? 'Akses penuh (tambah/edit/hapus/pengaturan)' : 'Belum diatur — aplikasi terbuka untuk siapa saja'}</small></span>
         <button type="button" class="btn-secondary" style="width:auto; margin:0; padding:9px 14px;" id="adminPinBtn">${adminSet ? 'Ubah / Hapus' : 'Atur PIN'}</button>
@@ -857,7 +886,7 @@ function renderSettings(){
           <option value="15" ${autolock==='15'?'selected':''}>15 menit</option>
           <option value="30" ${autolock==='30'?'selected':''}>30 menit</option>
         </select>
-      </div>
+      </div>`}
     </div>
 
     <div class="section-title">Cadangan Data</div>
@@ -909,9 +938,9 @@ function renderSettings(){
   `;
   el.querySelectorAll('[data-theme-btn]').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeBtn)));
   el.querySelector('#usernameInput').addEventListener('change', (e) => { localStorage.setItem(USERNAME_KEY, e.target.value.trim() || 'Pengguna'); });
-  el.querySelector('#adminPinBtn').addEventListener('click', () => openPinManager('admin'));
-  el.querySelector('#staffPinBtn').addEventListener('click', () => openPinManager('staff'));
-  el.querySelector('#autolockSelect').addEventListener('change', (e) => { localStorage.setItem(AUTOLOCK_KEY, e.target.value); showToast('Pengaturan kunci otomatis disimpan'); });
+  if(el.querySelector('#adminPinBtn')) el.querySelector('#adminPinBtn').addEventListener('click', () => openPinManager('admin'));
+  if(el.querySelector('#staffPinBtn')) el.querySelector('#staffPinBtn').addEventListener('click', () => openPinManager('staff'));
+  if(el.querySelector('#autolockSelect')) el.querySelector('#autolockSelect').addEventListener('change', (e) => { localStorage.setItem(AUTOLOCK_KEY, e.target.value); showToast('Pengaturan kunci otomatis disimpan'); });
   el.querySelector('#exportExcelBtn').addEventListener('click', exportExcel);
   el.querySelector('#importExcelBtn').addEventListener('click', () => el.querySelector('#importExcelFile').click());
   el.querySelector('#importExcelFile').addEventListener('change', importExcel);
@@ -1093,6 +1122,13 @@ function lockNow(){
   document.getElementById('lockMsg').textContent = '';
 }
 function initLock(){
+  if(isHubManaged()){
+    const role = new URLSearchParams(location.search).get('role');
+    currentRole = (role === 'staff') ? 'staff' : 'admin';
+    if(currentRole === 'staff') document.getElementById('fabAdd').style.display = 'none';
+    renderHeaderStats();
+    return;
+  }
   if(hasAnyPin()){ currentRole = hasAdminPin() ? 'admin' : 'admin'; lockNow(); }
 }
 
@@ -1100,6 +1136,7 @@ function initLock(){
 let lastActivity = Date.now();
 ['click','touchstart','keydown','scroll','mousemove'].forEach(ev => document.addEventListener(ev, () => { lastActivity = Date.now(); }, {passive:true}));
 setInterval(() => {
+  if(isHubManaged()) return;
   const minutes = parseInt(localStorage.getItem(AUTOLOCK_KEY) || '0', 10);
   if(minutes > 0 && hasAnyPin() && document.getElementById('lockScreen').style.display !== 'flex'){
     if(Date.now() - lastActivity > minutes * 60000) lockNow();
