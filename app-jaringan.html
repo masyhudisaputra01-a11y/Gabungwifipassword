@@ -387,6 +387,9 @@
   .rec-name{font-weight:700; font-size:15px; color:var(--ink); letter-spacing:-.1px;}
   .rec-tag{font-size:9.5px; font-weight:700; padding:3px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; flex:none; color:#fff; box-shadow:0 3px 8px -3px rgba(11,31,58,.4);}
   .rec-meta{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:8px; font-size:12px; color:var(--ink-soft);}
+  .rec-meta .copyable{ display:inline-flex; align-items:center; gap:4px; cursor:pointer; padding:2px 6px 2px 2px; margin:-2px -6px -2px -2px; border-radius:6px; transition:background .12s; }
+  .rec-meta .copyable:active{ background:rgba(201,151,76,.16); }
+  .rec-meta .copyable .copy-ic{ width:11px; height:11px; flex-shrink:0; opacity:.55; }
   .rec-meta span b{color:var(--ink); font-family:var(--font-mono); font-weight:600;}
   .rec-loc{margin-top:7px; font-size:11.5px; color:var(--gold-soft); font-weight:600; display:flex; align-items:center; gap:4px;}
   .rec-actions{display:flex; gap:8px; margin-top:11px; flex-wrap:wrap;}
@@ -1766,8 +1769,8 @@ function renderData(){
         ${statusBadge(r)}
       </div>
       <div class="rec-meta">
-        <span>ID: <b>${r['Customer ID']||'-'}</b></span>
-        <span>SN: <b>${r['Serial Number']||'-'}</b></span>
+        <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${r['Customer ID']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
+        <span class="copyable" onclick="copyField('${escJsAttr(r['Serial Number'])}','Serial Number')">SN: <b>${r['Serial Number']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
         <span>BW: <b>${r['Bandwidth']||'-'}</b></span>
       </div>
       <div class="rec-detail-grid">
@@ -1931,24 +1934,30 @@ function getIncidentsFor(recordId){
   return log[recordId] || [];
 }
 function esc(v){ return v!=null ? String(v).replace(/"/g,'&quot;') : ''; }
+function escJsAttr(v){
+  return v!=null ? String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;') : '';
+}
 
 /* ---------------- WIFI: SALIN PASSWORD & QR ---------------- */
 function copyWifiPass(id){
   const r = records.find(x=>x._id===id);
   if(!r || !r['Password WiFi']){ showToast('Belum ada password WiFi tersimpan'); return; }
-  const text = r['Password WiFi'];
+  copyField(r['Password WiFi'], 'Password WiFi');
+}
+function copyField(text, label){
+  if(!text || text === '-'){ showToast('Tidak ada data untuk disalin'); return; }
   if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(()=>showToast('Password WiFi disalin')).catch(()=>fallbackCopy(text));
+    navigator.clipboard.writeText(text).then(()=>showToast(`${label} disalin`)).catch(()=>fallbackCopy(text, label));
   } else {
-    fallbackCopy(text);
+    fallbackCopy(text, label);
   }
 }
-function fallbackCopy(text){
+function fallbackCopy(text, label){
   const ta = document.createElement('textarea');
   ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
   document.body.appendChild(ta); ta.select();
-  try{ document.execCommand('copy'); showToast('Password WiFi disalin'); }
-  catch(e){ showToast('Gagal menyalin password'); }
+  try{ document.execCommand('copy'); showToast(`${label||'Teks'} disalin`); }
+  catch(e){ showToast('Gagal menyalin'); }
   document.body.removeChild(ta);
 }
 function showWifiQr(id){
