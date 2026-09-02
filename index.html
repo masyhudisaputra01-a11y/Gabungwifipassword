@@ -22,6 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700;8..60,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="xlsx.full.min.js"></script>
 <style>
   :root{
     --navy-950:#05070A; --navy-900:#0A0F16; --navy-800:#111926; --navy-700:#1A2536;
@@ -220,6 +221,27 @@
 
   #toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--navy-800); color:var(--ink); border:1px solid var(--line); padding:11px 18px; border-radius:99px; font-size:12.5px; font-weight:600; box-shadow:var(--shadow-md); z-index:300; opacity:0; pointer-events:none; transition:all .25s; max-width:88vw; text-align:center; }
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ===== ONBOARDING ===== */
+  #onboardOverlay{ position:fixed; inset:0; background:rgba(4,6,10,.82); z-index:250; display:none; align-items:center; justify-content:center; padding:20px; }
+  #onboardOverlay.show{ display:flex; }
+  .ob-card{ background:var(--navy-900); border:1px solid var(--line); border-radius:20px; padding:22px 20px; max-width:360px; width:100%; color:#fff; text-align:center; box-shadow:var(--shadow-md); }
+  .ob-icon{ width:52px; height:52px; border-radius:14px; background:rgba(34,211,238,.14); border:1px solid rgba(34,211,238,.35); color:var(--gold); display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+  .ob-icon svg{ width:26px; height:26px; }
+  .ob-title{ font-family:var(--font-display); font-size:16.5px; font-weight:700; margin-bottom:6px; }
+  .ob-desc{ font-size:12.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:18px; }
+  .ob-dots{ display:flex; gap:6px; justify-content:center; margin-bottom:16px; }
+  .ob-dot{ width:6px; height:6px; border-radius:50%; background:var(--line); }
+  .ob-dot.active{ background:var(--gold); width:16px; border-radius:4px; }
+  .ob-actions{ display:flex; gap:8px; }
+  .ob-skip{ background:none; border:none; color:var(--ink-faint); font-size:12px; cursor:pointer; padding:11px; }
+
+  /* ===== IFRAME ERROR STATE ===== */
+  .pane-error{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:30px 24px; text-align:center; background:var(--paper); z-index:6; }
+  .pane-error svg{ width:38px; height:38px; color:var(--danger); }
+  .pane-error b{ font-size:14.5px; }
+  .pane-error span{ font-size:12.5px; color:var(--ink-soft); max-width:280px; }
+  .pane-error button{ margin-top:6px; padding:10px 20px; border-radius:10px; border:none; background:linear-gradient(160deg, var(--gold), var(--gold-deep)); color:#04121A; font-weight:700; font-size:13px; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -261,6 +283,9 @@
   <button type="button" class="hub-icon-btn" id="searchOpenBtn" title="Cari">
     <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
   </button>
+  <button type="button" class="hub-icon-btn" id="installBtn" title="Install Aplikasi" style="display:none;">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
   <button type="button" class="hub-icon-btn" id="hubSettingsBtn" title="Pengaturan">
     <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5"/></svg>
   </button>
@@ -285,14 +310,31 @@
 
   <div class="pane" id="paneJaringan">
     <iframe id="ifJaringan" title="Data Jaringan" data-src="app-jaringan.html" allow="clipboard-write; clipboard-read"></iframe>
+    <div class="pane-error" id="errJaringan" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <b>Modul Data Jaringan gagal dimuat</b>
+      <span>Periksa apakah file app-jaringan.html masih ada di paket instalasi, atau coba muat ulang.</span>
+      <button type="button" id="retryJaringanBtn">Muat Ulang</button>
+    </div>
   </div>
 
   <div class="pane" id="paneWifi">
     <iframe id="ifWifi" title="WiFi Vault" data-src="app-wifi.html" allow="clipboard-write; clipboard-read"></iframe>
+    <div class="pane-error" id="errWifi" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <b>Modul WiFi Vault gagal dimuat</b>
+      <span>Periksa apakah file app-wifi.html masih ada di paket instalasi, atau coba muat ulang.</span>
+      <button type="button" id="retryWifiBtn">Muat Ulang</button>
+    </div>
   </div>
 </div>
 
 <div id="toast"></div>
+
+<!-- ===== ONBOARDING ===== -->
+<div id="onboardOverlay">
+  <div class="ob-card" id="obCard"></div>
+</div>
 
 <script>
 /* ============================================================
@@ -348,7 +390,7 @@ function iframeQuery(){
   return `?hublock=${gated}&role=${role}&theme=${theme}`;
 }
 
-function activate(app){
+function activate(app, _fromHistory){
   try{ localStorage.setItem(HUB_KEY, app); }catch(e){}
   [btnRingkasan, btnJaringan, btnWifi].forEach(b => b.classList.remove('active'));
   [paneRingkasan, paneJaringan, paneWifi].forEach(p => p.classList.remove('active'));
@@ -360,6 +402,7 @@ function activate(app){
       ifWifi.src = ifWifi.dataset.src + iframeQuery();
       ifWifi.addEventListener('load', () => { loading.classList.add('hidden'); refreshBadges(); }, { once:true });
       wifiLoaded = true;
+      armLoadWatchdog('wifi');
     }
   } else if(app === 'jaringan'){
     btnJaringan.classList.add('active'); paneJaringan.classList.add('active');
@@ -367,12 +410,65 @@ function activate(app){
       loading.classList.remove('hidden');
       ifJaringan.src = ifJaringan.dataset.src + iframeQuery();
       ifJaringan.addEventListener('load', () => { jaringanReady = true; loading.classList.add('hidden'); refreshBadges(); }, { once:true });
+      armLoadWatchdog('jaringan');
     }
   } else {
     btnRingkasan.classList.add('active'); paneRingkasan.classList.add('active');
     renderRingkasan();
   }
+
+  if(!_fromHistory){
+    if(!history.state || history.state.app !== app){
+      history.pushState({ hubNav:true, app }, '', '#'+app);
+    }
+  }
 }
+
+/* ================= TOMBOL BACK (ANDROID) ================= */
+window.addEventListener('popstate', (e) => {
+  if(document.getElementById('lockScreen').classList.contains('show')) return;
+  if(document.getElementById('onboardOverlay').classList.contains('show')){ closeOnboarding(); return; }
+  const openOverlay = document.querySelector('.modal-overlay.open');
+  if(openOverlay){ closeModal(openOverlay); history.pushState({ hubNav:true, app: currentActiveApp() }, '', '#'+currentActiveApp()); return; }
+  if(searchOverlay.classList.contains('open')){ searchOverlay.classList.remove('open'); history.pushState({ hubNav:true, app: currentActiveApp() }, '', '#'+currentActiveApp()); return; }
+  const target = (e.state && e.state.app) ? e.state.app : 'ringkasan';
+  activate(target, true);
+});
+function currentActiveApp(){
+  if(btnJaringan.classList.contains('active')) return 'jaringan';
+  if(btnWifi.classList.contains('active')) return 'wifi';
+  return 'ringkasan';
+}
+
+/* ================= WATCHDOG PEMUATAN MODUL (deteksi gagal muat) ================= */
+const _loadWatchdogs = {};
+function armLoadWatchdog(app){
+  clearTimeout(_loadWatchdogs[app]);
+  const iframe = app === 'jaringan' ? ifJaringan : ifWifi;
+  const errBox = document.getElementById(app === 'jaringan' ? 'errJaringan' : 'errWifi');
+  _loadWatchdogs[app] = setTimeout(() => {
+    const ready = app === 'jaringan' ? jaringanReady : (wifiLoaded && ifWifi.contentWindow && ifWifi.contentDocument && ifWifi.contentDocument.readyState === 'complete');
+    if(!ready){ errBox.style.display = 'flex'; loading.classList.add('hidden'); }
+  }, 9000);
+  iframe.addEventListener('error', () => { errBox.style.display = 'flex'; loading.classList.add('hidden'); }, { once:true });
+  iframe.addEventListener('load', () => { clearTimeout(_loadWatchdogs[app]); errBox.style.display = 'none'; }, { once:true });
+}
+document.getElementById('retryJaringanBtn').addEventListener('click', () => {
+  document.getElementById('errJaringan').style.display = 'none';
+  jaringanReady = false;
+  loading.classList.remove('hidden');
+  ifJaringan.src = ifJaringan.dataset.src + iframeQuery();
+  ifJaringan.addEventListener('load', () => { jaringanReady = true; loading.classList.add('hidden'); refreshBadges(); }, { once:true });
+  armLoadWatchdog('jaringan');
+});
+document.getElementById('retryWifiBtn').addEventListener('click', () => {
+  document.getElementById('errWifi').style.display = 'none';
+  wifiLoaded = true;
+  loading.classList.remove('hidden');
+  ifWifi.src = ifWifi.dataset.src + iframeQuery();
+  ifWifi.addEventListener('load', () => { loading.classList.add('hidden'); refreshBadges(); }, { once:true });
+  armLoadWatchdog('wifi');
+});
 
 btnRingkasan.addEventListener('click', () => activate('ringkasan'));
 btnJaringan.addEventListener('click', () => activate('jaringan'));
@@ -590,9 +686,10 @@ const searchResults = document.getElementById('searchResults');
 
 document.getElementById('searchOpenBtn').addEventListener('click', () => {
   searchOverlay.classList.add('open');
+  history.pushState({ hubNav:true, app: currentActiveApp(), overlay:'search' }, '', '#search');
   setTimeout(() => searchInputGlobal.focus(), 80);
 });
-document.getElementById('searchCloseBtn').addEventListener('click', () => { searchOverlay.classList.remove('open'); });
+document.getElementById('searchCloseBtn').addEventListener('click', () => { searchOverlay.classList.remove('open'); if(history.state && history.state.overlay === 'search') history.back(); });
 
 function escapeHtmlHub(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -671,11 +768,13 @@ function openModal(html){
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('open'));
   overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(overlay); });
+  history.pushState({ hubNav:true, app: currentActiveApp(), overlay:'modal' }, '', '#modal');
   return overlay;
 }
 function closeModal(overlay){
   overlay.classList.remove('open');
   setTimeout(() => overlay.remove(), 220);
+  if(history.state && history.state.overlay === 'modal') history.back();
 }
 
 document.getElementById('hubSettingsBtn').addEventListener('click', openHubSettings);
@@ -737,6 +836,14 @@ function openHubSettings(){
       </div>
     </div>
 
+    <div class="settings-section">
+      <h3>Laporan</h3>
+      <div class="settings-card" style="padding:12px 14px;">
+        <div class="helptext" style="margin-top:0;">Unduh satu file Excel berisi data Jaringan, data WiFi, dan ringkasan — dalam sheet terpisah.</div>
+        <button type="button" class="btn-full-secondary" id="hubExportBtn">📊 Ekspor Laporan Gabungan (Excel)</button>
+      </div>
+    </div>
+
     <button type="button" class="btn-full-secondary" id="closeHubSettingsBtn">Tutup</button>
   `);
   overlay.querySelectorAll('[data-theme-choice]').forEach(btn => {
@@ -750,6 +857,7 @@ function openHubSettings(){
   });
   overlay.querySelector('#hubBackupUploadBtn').addEventListener('click', () => { closeModal(overlay); hubBackupAll('upload'); });
   overlay.querySelector('#hubBackupDownloadBtn').addEventListener('click', () => { closeModal(overlay); hubBackupAll('download'); });
+  overlay.querySelector('#hubExportBtn').addEventListener('click', () => { closeModal(overlay); exportCombinedExcel(); });
   overlay.querySelector('#closeHubSettingsBtn').addEventListener('click', () => closeModal(overlay));
 }
 
@@ -829,11 +937,193 @@ function boot(){
   document.getElementById('lockScreen').classList.remove('show');
   let initial = 'ringkasan';
   try{ initial = localStorage.getItem(HUB_KEY) || 'ringkasan'; }catch(e){}
-  activate(initial);
+  history.replaceState({ hubNav:true, app: initial }, '', '#'+initial);
+  activate(initial, true);
   if('serviceWorker' in navigator){
     window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
   }
   setTimeout(refreshBadges, 800);
+  setTimeout(checkPinMigration, 600);
+  setTimeout(maybeShowOnboarding, 1200);
+}
+
+/* ================= INSTALL PROMPT (Tambah ke Layar Utama) ================= */
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  document.getElementById('installBtn').style.display = 'flex';
+});
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if(!_deferredInstallPrompt) return;
+  document.getElementById('installBtn').style.display = 'none';
+  _deferredInstallPrompt.prompt();
+  try{ await _deferredInstallPrompt.userChoice; }catch(e){}
+  _deferredInstallPrompt = null;
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBtn').style.display = 'none';
+  showToast('Aplikasi berhasil diinstall');
+});
+
+/* ================= MIGRASI PIN LAMA ================= */
+function checkPinMigration(){
+  if(hasHubPin()) return; // hub PIN sudah diatur, tidak perlu migrasi
+  try{ if(sessionStorage.getItem('hub_pin_migration_dismissed')) return; }catch(e){}
+
+  let oldAdmin = null, oldStaff = null, hasOldSimplePin = false;
+  try{
+    const sjPin = localStorage.getItem('sj_pin_v1');
+    if(sjPin) hasOldSimplePin = true;
+    const wvAdmin = localStorage.getItem('wv_admin_pin');
+    const wvStaff = localStorage.getItem('wv_staff_pin');
+    if(wvAdmin) oldAdmin = atob(wvAdmin);
+    if(wvStaff) oldStaff = atob(wvStaff);
+    if(!oldAdmin && sjPin) oldAdmin = atob(sjPin);
+  }catch(e){ return; }
+
+  if(!oldAdmin && !hasOldSimplePin) return;
+
+  const overlay = openModal(`
+    <div class="modal-handle"></div>
+    <div class="modal-title">Samakan Jadi Satu PIN?</div>
+    <div class="helptext" style="margin-bottom:14px;">Kami mendeteksi PIN lama yang pernah diatur di ${oldAdmin ? 'WiFi Vault' : 'Data Jaringan'}. Aplikasi ini sekarang memakai satu PIN gabungan untuk kedua modul. Gunakan PIN lama sebagai PIN Admin Hub, atau atur PIN baru nanti lewat Pengaturan.</div>
+    <button type="button" class="btn-primary" id="migYesBtn">Gunakan PIN Lama</button>
+    ${oldStaff ? '<button type="button" class="btn-full-secondary" id="migStaffBtn">Gunakan Juga PIN Staff Lama</button>' : ''}
+    <button type="button" class="btn-full-secondary" id="migSkipBtn">Nanti Saja</button>
+  `);
+  overlay.querySelector('#migYesBtn').addEventListener('click', () => {
+    const pin = oldAdmin || null;
+    if(pin){ localStorage.setItem(HUB_PIN_ADMIN_KEY, btoa(pin)); }
+    if(oldStaff){ localStorage.setItem(HUB_PIN_STAFF_KEY, btoa(oldStaff)); }
+    showToast('PIN Hub berhasil disamakan');
+    closeModal(overlay);
+    reloadIframesForLockState();
+  });
+  const staffBtn = overlay.querySelector('#migStaffBtn');
+  if(staffBtn){
+    staffBtn.addEventListener('click', () => {
+      if(oldAdmin) localStorage.setItem(HUB_PIN_ADMIN_KEY, btoa(oldAdmin));
+      if(oldStaff) localStorage.setItem(HUB_PIN_STAFF_KEY, btoa(oldStaff));
+      showToast('PIN Admin & Staff Hub berhasil disamakan');
+      closeModal(overlay);
+      reloadIframesForLockState();
+    });
+  }
+  overlay.querySelector('#migSkipBtn').addEventListener('click', () => {
+    try{ sessionStorage.setItem('hub_pin_migration_dismissed', '1'); }catch(e){}
+    closeModal(overlay);
+  });
+}
+
+/* ================= ONBOARDING TOUR ================= */
+const ONBOARD_KEY = 'hub_onboarding_seen_v1';
+const onboardSteps = [
+  {
+    icon: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>',
+    title: 'Selamat Datang di SIM Jaringan+',
+    desc: 'Data Jaringan dan WiFi Vault sekarang jadi satu aplikasi. Tab <b>Ringkasan</b> menampilkan gabungan statistik dari kedua modul.'
+  },
+  {
+    icon: '<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    title: 'Pencarian Gabungan',
+    desc: 'Ketuk ikon kaca pembesar untuk mencari data di Data Jaringan &amp; WiFi Vault sekaligus, lalu langsung lompat ke hasilnya.'
+  },
+  {
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 20a1.6 1.6 0 100-3.2 1.6 1.6 0 000 3.2z" fill="currentColor"/><path d="M8.2 13.6a5.4 5.4 0 017.6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5.2 10.6a9.6 9.6 0 0113.6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    title: 'PIN Gabungan',
+    desc: 'Atur satu PIN Admin/Staff lewat menu Pengaturan (ikon gerigi) yang berlaku untuk kedua modul sekaligus — tidak perlu isi PIN dua kali.'
+  },
+  {
+    icon: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 12l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    title: 'Backup & Ekspor Sekali Ketuk',
+    desc: 'Menu Pengaturan juga punya tombol Backup Google Drive gabungan, dan Ekspor Laporan Gabungan (Excel) untuk kedua modul dalam satu file.'
+  }
+];
+let _obIndex = 0;
+function renderOnboardStep(){
+  const s = onboardSteps[_obIndex];
+  const dots = onboardSteps.map((_,i) => `<div class="ob-dot ${i===_obIndex?'active':''}"></div>`).join('');
+  document.getElementById('obCard').innerHTML = `
+    <div class="ob-icon">${s.icon}</div>
+    <div class="ob-title">${s.title}</div>
+    <div class="ob-desc">${s.desc}</div>
+    <div class="ob-dots">${dots}</div>
+    <div class="ob-actions">
+      ${_obIndex < onboardSteps.length-1 ? `<button type="button" class="ob-skip" id="obSkipBtn">Lewati</button><button type="button" class="btn-primary" id="obNextBtn" style="margin:0;">Lanjut</button>` : `<button type="button" class="btn-primary" id="obDoneBtn" style="margin:0; width:100%;">Mulai Pakai</button>`}
+    </div>
+  `;
+  const next = document.getElementById('obNextBtn');
+  if(next) next.addEventListener('click', () => { _obIndex++; renderOnboardStep(); });
+  const skip = document.getElementById('obSkipBtn');
+  if(skip) skip.addEventListener('click', closeOnboarding);
+  const done = document.getElementById('obDoneBtn');
+  if(done) done.addEventListener('click', closeOnboarding);
+}
+function maybeShowOnboarding(){
+  try{ if(localStorage.getItem(ONBOARD_KEY)) return; }catch(e){}
+  _obIndex = 0;
+  renderOnboardStep();
+  document.getElementById('onboardOverlay').classList.add('show');
+  history.pushState({ hubNav:true, app: currentActiveApp(), overlay:'onboard' }, '', '#onboard');
+}
+function closeOnboarding(){
+  document.getElementById('onboardOverlay').classList.remove('show');
+  try{ localStorage.setItem(ONBOARD_KEY, '1'); }catch(e){}
+  if(history.state && history.state.overlay === 'onboard') history.back();
+}
+
+/* ================= EKSPOR LAPORAN GABUNGAN (Excel) ================= */
+function exportCombinedExcel(){
+  if(typeof XLSX === 'undefined'){ showToast('Modul ekspor belum siap, coba lagi sesaat lagi'); return; }
+  let jRecords = [], wRecords = [];
+  try{ jRecords = JSON.parse(localStorage.getItem('sj_records_v1') || '[]'); }catch(e){}
+  try{ wRecords = JSON.parse(localStorage.getItem('wv_records_v1') || '[]'); }catch(e){}
+
+  if(jRecords.length === 0 && wRecords.length === 0){ showToast('Belum ada data untuk diekspor'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  if(jRecords.length){
+    const jRows = jRecords.map(r => ({
+      'Nama Ruangan': r['Nama Ruangan'] || '',
+      'Lokasi': r['Lokasi'] || '',
+      'Customer ID': r['Customer ID'] || '',
+      'Serial Number': r['Serial Number'] || '',
+      'Bandwidth': r['Bandwidth'] || '',
+      'Jenis Paket': r['Jenis Paket'] || '',
+      'Status Kontrak': r['Status Kontrak'] || '',
+      'Prioritas': r['Prioritas'] || '',
+      'Tanggal Instalasi': r['Tanggal Instalasi'] || '',
+      'Tanggal Berakhir Kontrak': r['Tanggal Berakhir Kontrak'] || '',
+      'PIC/Teknisi': r['PIC/Teknisi'] || '',
+      'Nama Jaringan (SSID)': r['Nama Jaringan'] || ''
+    }));
+    const wsJ = XLSX.utils.json_to_sheet(jRows);
+    XLSX.utils.book_append_sheet(wb, wsJ, 'Data Jaringan');
+  }
+  if(wRecords.length){
+    const wRows = wRecords.map(r => ({
+      'SSID': r.ssid || '',
+      'Password': r.password || '',
+      'Lokasi': r.lokasi || '',
+      'Catatan': r.catatan || ''
+    }));
+    const wsW = XLSX.utils.json_to_sheet(wRows);
+    XLSX.utils.book_append_sheet(wb, wsW, 'WiFi Vault');
+  }
+
+  const summaryRows = [
+    { Modul: 'Data Jaringan', 'Total Data': jRecords.length },
+    { Modul: 'WiFi Vault', 'Total Data': wRecords.length },
+    { Modul: 'Tanggal Ekspor', 'Total Data': new Date().toLocaleString('id-ID') }
+  ];
+  const wsS = XLSX.utils.json_to_sheet(summaryRows);
+  XLSX.utils.book_append_sheet(wb, wsS, 'Ringkasan');
+
+  const filename = `Laporan_Gabungan_PoldaSulbar_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  showToast('Laporan gabungan berhasil diunduh');
 }
 
 /* ================= INIT ================= */

@@ -1987,28 +1987,28 @@ function openReportForm(id){
     <div class="modal-title">Buat Laporan — ${r['Nama Ruangan']||'Data'}</div>
     <form id="reportForm">
       <div class="field">
-        <label>1. Nama Ruangan</label>
+        <label>1. Keluhan</label>
+        <textarea name="keluhan" placeholder="Jelaskan keluhan/gangguan yang terjadi..." required></textarea>
+      </div>
+      <div class="field">
+        <label>2. Nama Ruangan</label>
         <input type="text" name="namaRuangan" value="${esc(r['Nama Ruangan'])}">
       </div>
       <div class="field">
-        <label>2. Customer ID</label>
+        <label>3. Customer ID</label>
         <input type="text" name="customerId" value="${esc(r['Customer ID'])}">
       </div>
       <div class="field">
-        <label>3. Serial Number</label>
+        <label>4. Serial Number</label>
         <input type="text" name="serialNumber" value="${esc(r['Serial Number'])}">
       </div>
       <div class="field">
-        <label>4. Bandwidth</label>
+        <label>5. Bandwidth</label>
         <input type="text" name="bandwidth" value="${esc(r['Bandwidth'])}">
       </div>
       <div class="field">
-        <label>5. Lokasi</label>
+        <label>6. Lokasi</label>
         <input type="text" name="lokasi" value="${esc(r['Lokasi'])}">
-      </div>
-      <div class="field">
-        <label>6. Keluhan</label>
-        <textarea name="keluhan" placeholder="Jelaskan keluhan/gangguan yang terjadi..." required></textarea>
       </div>
       <div class="field">
         <label>7. PIC</label>
