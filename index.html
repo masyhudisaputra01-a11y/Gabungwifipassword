@@ -844,6 +844,14 @@ function openHubSettings(){
       </div>
     </div>
 
+    <div class="settings-section">
+      <h3>Lainnya</h3>
+      <div class="settings-card" style="padding:12px 14px;">
+        <div class="helptext" style="margin-top:0;">Jika update terbaru belum muncul setelah mengganti file, gunakan ini untuk membersihkan cache secara paksa.</div>
+        <button type="button" class="btn-full-secondary" id="hubForceUpdateBtn">🔄 Perbarui Aplikasi (Bersihkan Cache)</button>
+      </div>
+    </div>
+
     <button type="button" class="btn-full-secondary" id="closeHubSettingsBtn">Tutup</button>
   `);
   overlay.querySelectorAll('[data-theme-choice]').forEach(btn => {
@@ -858,6 +866,7 @@ function openHubSettings(){
   overlay.querySelector('#hubBackupUploadBtn').addEventListener('click', () => { closeModal(overlay); hubBackupAll('upload'); });
   overlay.querySelector('#hubBackupDownloadBtn').addEventListener('click', () => { closeModal(overlay); hubBackupAll('download'); });
   overlay.querySelector('#hubExportBtn').addEventListener('click', () => { closeModal(overlay); exportCombinedExcel(); });
+  overlay.querySelector('#hubForceUpdateBtn').addEventListener('click', () => { closeModal(overlay); forceUpdateApp(); });
   overlay.querySelector('#closeHubSettingsBtn').addEventListener('click', () => closeModal(overlay));
 }
 
@@ -940,7 +949,7 @@ function boot(){
   history.replaceState({ hubNav:true, app: initial }, '', '#'+initial);
   activate(initial, true);
   if('serviceWorker' in navigator){
-    window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+    window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => { reg.update().catch(()=>{}); }).catch(() => {}); });
   }
   setTimeout(refreshBadges, 800);
   setTimeout(checkPinMigration, 600);
@@ -1071,6 +1080,23 @@ function closeOnboarding(){
   document.getElementById('onboardOverlay').classList.remove('show');
   try{ localStorage.setItem(ONBOARD_KEY, '1'); }catch(e){}
   if(history.state && history.state.overlay === 'onboard') history.back();
+}
+
+/* ================= PERBARUI APLIKASI (BERSIHKAN CACHE PAKSA) ================= */
+async function forceUpdateApp(){
+  showToast('Membersihkan cache...');
+  try{
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for(const reg of regs){ await reg.unregister(); }
+    }
+    if('caches' in window){
+      const keys = await caches.keys();
+      for(const k of keys){ await caches.delete(k); }
+    }
+  }catch(e){}
+  showToast('Cache dibersihkan, memuat ulang...');
+  setTimeout(() => { location.reload(true); }, 600);
 }
 
 /* ================= EKSPOR LAPORAN GABUNGAN (Excel) ================= */

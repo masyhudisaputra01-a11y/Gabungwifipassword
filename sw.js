@@ -1,4 +1,4 @@
-const CACHE_NAME = 'simjaringan-hub-v3';
+const CACHE_NAME = 'simjaringan-hub-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -32,8 +32,29 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+function isHtmlRequest(request){
+  if (request.mode === 'navigate') return true;
+  const url = request.url;
+  return url.endsWith('.html') || url.endsWith('/');
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  // HTML: network-first, supaya perubahan terbaru selalu diambil saat online.
+  // Cache hanya dipakai sebagai cadangan ketika offline.
+  if (isHtmlRequest(event.request)) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).then((res) => {
+        const resClone = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Aset lain (js/png/json): cache-first untuk kecepatan & offline.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
@@ -45,3 +66,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
