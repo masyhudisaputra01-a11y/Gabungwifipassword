@@ -434,6 +434,11 @@
     font-size:15px; font-weight:700; font-family:var(--font-body); box-shadow:0 6px 16px -6px rgba(29,170,85,.5); transition:transform .12s ease;
   }
   .report-actions .btn-wa:active{transform:scale(.98);}
+  .report-actions .btn-tg{
+    width:100%; padding:15px; border:none; border-radius:var(--radius-sm); background:linear-gradient(160deg,#3DB4E8,#1B94D2); color:#fff;
+    font-size:15px; font-weight:700; font-family:var(--font-body); box-shadow:0 6px 16px -6px rgba(27,148,210,.5); transition:transform .12s ease;
+  }
+  .report-actions .btn-tg:active{transform:scale(.98);}
   .report-preview{
     white-space:pre-wrap; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-sm);
     padding:13px; font-size:13px; color:var(--ink); font-family:var(--font-mono); margin-bottom:14px; line-height:1.6;
@@ -2058,6 +2063,7 @@ function showReportResult(data){
     <div class="report-preview" id="reportPreviewText"></div>
     <div class="report-actions">
       <button type="button" class="btn-wa" id="sendWaBtn">📲 Kirim via WhatsApp</button>
+      <button type="button" class="btn-tg" id="sendTgBtn">✈️ Kirim via Telegram</button>
       <button type="button" class="btn-secondary" id="copyReportBtn">⧉ Salin Teks</button>
       <button type="button" class="btn-secondary" id="printReportBtn">🖨 Cetak</button>
       <button type="button" class="btn-secondary" id="closeReportResultBtn">Tutup</button>
@@ -2067,6 +2073,9 @@ function showReportResult(data){
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('sendWaBtn').addEventListener('click', ()=>{
     window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  });
+  document.getElementById('sendTgBtn').addEventListener('click', ()=>{
+    window.open('https://t.me/share/url?url=&text=' + encodeURIComponent(text), '_blank');
   });
   document.getElementById('copyReportBtn').addEventListener('click', async ()=>{
     try{
