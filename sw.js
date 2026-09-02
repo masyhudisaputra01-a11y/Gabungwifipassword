@@ -1,4 +1,4 @@
-const CACHE_NAME = 'simjaringan-hub-v1';
+const CACHE_NAME = 'simjaringan-hub-v2';
 const ASSETS = [
   './',
   './index.html',
