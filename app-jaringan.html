@@ -365,6 +365,10 @@
   }
 
   .result-count{font-size:11px; color:var(--ink-faint); margin:2px 2px 10px; letter-spacing:.4px; font-weight:500; text-transform:uppercase;}
+  .expiry-banner{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.3); color:#F87171; border-radius:10px; padding:10px 12px; margin:-2px 2px 12px; font-size:12.5px; font-weight:600; }
+  .expiry-banner.warn{ background:rgba(251,191,36,.12); border-color:rgba(251,191,36,.35); color:#B8860B; }
+  html[data-theme="dark"] .expiry-banner.warn{ color:#FBBF24; }
+  .expiry-banner button{ border:none; background:rgba(255,255,255,.14); color:inherit; font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px; cursor:pointer; flex-shrink:0; }
 
   .rec-card{
     background:var(--card); border-radius:var(--radius-sm); padding:14px 15px; margin-bottom:10px;
@@ -386,10 +390,16 @@
   .rec-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
   .rec-name{font-weight:700; font-size:15px; color:var(--ink); letter-spacing:-.1px;}
   .rec-tag{font-size:9.5px; font-weight:700; padding:3px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; flex:none; color:#fff; box-shadow:0 3px 8px -3px rgba(11,31,58,.4);}
+  .verified-badge{ width:20px; height:20px; border-radius:50%; background:var(--ok, #34D399); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .rec-actions button.verify{ color:#0BA5C4; border-color:rgba(34,211,238,.35); }
+  .rec-actions button.verified{ color:#34D399; border-color:rgba(52,211,153,.35); background:rgba(52,211,153,.08); }
   .rec-meta{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:8px; font-size:12px; color:var(--ink-soft);}
-  .rec-meta .copyable{ display:inline-flex; align-items:center; gap:4px; cursor:pointer; padding:2px 6px 2px 2px; margin:-2px -6px -2px -2px; border-radius:6px; transition:background .12s; }
-  .rec-meta .copyable:active{ background:rgba(201,151,76,.16); }
-  .rec-meta .copyable .copy-ic{ width:11px; height:11px; flex-shrink:0; opacity:.55; }
+  .copyable{ cursor:pointer; transition:background .12s; border-radius:6px; }
+  .copyable:active{ background:rgba(201,151,76,.16); }
+  .copyable .copy-ic{ width:11px; height:11px; flex-shrink:0; opacity:.55; vertical-align:-1px; margin-left:3px; }
+  .rec-meta .copyable{ display:inline-flex; align-items:center; gap:4px; padding:2px 6px 2px 2px; margin:-2px -6px -2px -2px; }
+  .rec-name.copyable{ padding:2px 4px; margin:-2px -4px; display:inline-block; }
+  .rec-detail-grid .dd.copyable{ padding:2px 4px; margin:-2px -4px; }
   .rec-meta span b{color:var(--ink); font-family:var(--font-mono); font-weight:600;}
   .rec-loc{margin-top:7px; font-size:11.5px; color:var(--gold-soft); font-weight:600; display:flex; align-items:center; gap:4px;}
   .rec-actions{display:flex; gap:8px; margin-top:11px; flex-wrap:wrap;}
@@ -468,6 +478,18 @@
   .pass-toggle{position:absolute; right:6px; top:29px; width:30px; height:30px; border:none; background:transparent; color:var(--ink-faint); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:8px;}
   .pass-toggle:hover{background:var(--paper); color:var(--ink);}
   .pass-toggle svg{width:17px; height:17px;}
+  .input-with-btn{ display:flex; gap:6px; align-items:stretch; }
+  .input-with-btn input{ flex:1; }
+  .scan-btn{
+    flex-shrink:0; width:42px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--card);
+    color:var(--gold-deep); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .scan-btn:active{ background:var(--paper); transform:scale(.95); }
+  .scan-btn svg{ width:19px; height:19px; }
+  #scannerVideo{ width:100%; border-radius:12px; background:#000; max-height:50vh; object-fit:cover; }
+  .scanner-wrap{ position:relative; border-radius:12px; overflow:hidden; margin-bottom:14px; }
+  .scanner-frame{ position:absolute; inset:18% 12%; border:2px solid var(--gold); border-radius:12px; box-shadow:0 0 0 2000px rgba(0,0,0,.35); pointer-events:none; }
+  .scanner-hint{ text-align:center; font-size:12px; color:var(--ink-soft); margin-bottom:12px; }
   .btn-primary{
     width:100%; padding:15px; border:none; border-radius:var(--radius-sm);
     background:linear-gradient(160deg,var(--navy-800),var(--navy-950)); color:#fff;
@@ -757,6 +779,7 @@
     </div>
 
     <div class="result-count" id="resultCount">0 hasil</div>
+    <div id="expiryFilterBanner" style="display:none;"></div>
     <div id="recordList"></div>
   </section>
 
@@ -784,7 +807,12 @@
           </div>
           <div class="field">
             <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h18"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="7" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r="1" fill="currentColor" stroke="none"/></svg>Serial Number</label>
-            <input type="text" name="Serial Number" placeholder="ZTEGC...">
+            <div class="input-with-btn">
+              <input type="text" name="Serial Number" id="addSerialInput" placeholder="ZTEGC...">
+              <button type="button" class="scan-btn" onclick="openBarcodeScanner('addSerialInput')" title="Scan Barcode/QR">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+              </button>
+            </div>
           </div>
         </div>
         <div class="field-row">
@@ -821,8 +849,9 @@
         </div>
         <div class="field">
           <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>PIC / Teknisi <span class="hint">opsional</span></label>
-          <input type="text" name="PIC/Teknisi" placeholder="Nama teknisi">
+          <input type="text" name="PIC/Teknisi" placeholder="Nama teknisi" list="picDatalist">
         </div>
+        <datalist id="picDatalist"></datalist>
         <div class="field">
           <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>Nama Jaringan (SSID) <span class="hint">opsional</span></label>
           <input type="text" name="Nama Jaringan" placeholder="cth. POLDA-SULBAR-WIFI">
@@ -911,7 +940,7 @@ const LOCATIONS = ["BRIMOB MAMUJU","BRIMOB POLMAN","GEDUNG BHAYANGKARI","GEDUNG 
 
 const STORE_KEY = 'sj_records_v1';
 let records = [];
-let state = { search:'', prio:'ALL', loc:'ALL', status:'ALL' };
+let state = { search:'', prio:'ALL', loc:'ALL', status:'ALL', expiry:'ALL' };
 
 function loadRecords(){
   const raw = localStorage.getItem(STORE_KEY);
@@ -986,8 +1015,16 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 /* ---------------- HUB INTEGRATION (dipanggil dari index.html) ---------------- */
 window.hubGoToSearch = function(query){
   document.querySelector('button[data-view="data"]').click();
+  state.expiry = 'ALL';
   state.search = String(query||'').trim().toLowerCase();
   document.getElementById('searchInput').value = query||'';
+  renderData();
+};
+window.hubGoToExpiring = function(kind){
+  document.querySelector('button[data-view="data"]').click();
+  state.search = '';
+  document.getElementById('searchInput').value = '';
+  state.expiry = kind === 'overdue' ? 'OVERDUE' : 'SOON30';
   renderData();
 };
 window.hubGetSummary = function(){
@@ -1703,6 +1740,12 @@ function populateLocFilter(){
   const uniq = [...new Set(records.map(r=>r['Lokasi']).filter(Boolean))].sort();
   sel.innerHTML = '<option value="ALL">Semua Lokasi</option>' + uniq.map(l=>`<option value="${l}">${l}</option>`).join('');
 }
+function populatePicDatalist(){
+  const dl = document.getElementById('picDatalist');
+  if(!dl) return;
+  const uniq = [...new Set(records.map(r=>r['PIC/Teknisi']).filter(Boolean))].sort();
+  dl.innerHTML = uniq.map(p=>`<option value="${esc(p)}">`).join('');
+}
 
 document.getElementById('searchInput').addEventListener('input', e=>{
   state.search = e.target.value.trim().toLowerCase();
@@ -1734,6 +1777,11 @@ function filteredRecords(){
     if(state.prio !== 'ALL' && r['Prioritas'] !== state.prio) return false;
     if(state.loc !== 'ALL' && r['Lokasi'] !== state.loc) return false;
     if(state.status !== 'ALL' && String(r['Status Kontrak']||'').toUpperCase() !== state.status) return false;
+    if(state.expiry !== 'ALL'){
+      const d = daysUntil(r['Tanggal Berakhir Kontrak']);
+      if(state.expiry === 'OVERDUE' && !(d !== null && d < 0)) return false;
+      if(state.expiry === 'SOON30' && !(d !== null && d >= 0 && d <= 30)) return false;
+    }
     if(state.search){
       const hay = [r['Nama Ruangan'], r['Customer ID'], r['Serial Number'], r['Lokasi'], r['Jenis Paket'], r['Nama Jaringan']]
         .map(v=>String(v||'').toLowerCase()).join(' | ');
@@ -1745,9 +1793,23 @@ function filteredRecords(){
 
 function renderData(){
   populateLocFilter();
+  populatePicDatalist();
   document.getElementById('locFilter').value = state.loc;
   const list = filteredRecords();
   document.getElementById('resultCount').textContent = `${list.length} hasil dari ${records.length} data`;
+  const banner = document.getElementById('expiryFilterBanner');
+  if(state.expiry === 'OVERDUE'){
+    banner.style.display = 'block';
+    banner.innerHTML = `<div class="expiry-banner">⚠️ Menampilkan kontrak yang sudah lewat jatuh tempo <button id="clearExpiryBtn">Hapus Filter</button></div>`;
+  } else if(state.expiry === 'SOON30'){
+    banner.style.display = 'block';
+    banner.innerHTML = `<div class="expiry-banner warn">⏳ Menampilkan kontrak yang akan berakhir ≤30 hari <button id="clearExpiryBtn">Hapus Filter</button></div>`;
+  } else {
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+  }
+  const clearBtn = document.getElementById('clearExpiryBtn');
+  if(clearBtn) clearBtn.addEventListener('click', () => { state.expiry = 'ALL'; renderData(); });
   const container = document.getElementById('recordList');
   if(list.length === 0){
     container.innerHTML = `<div class="empty-state">
@@ -1759,8 +1821,9 @@ function renderData(){
   container.innerHTML = list.map(r=>`
     <div class="rec-card" style="--acc:${prioColor(r['Prioritas'])}">
       <div class="rec-top">
-        <div class="rec-name">${r['Nama Ruangan']||'(tanpa nama)'}</div>
-        <div style="display:flex; gap:6px; flex:none;">
+        <div class="rec-name copyable" onclick="copyField('${escJsAttr(r['Nama Ruangan'])}','Nama Ruangan')">${r['Nama Ruangan']||'(tanpa nama)'}</div>
+        <div style="display:flex; gap:6px; flex:none; align-items:center;">
+          ${r['Diverifikasi Pada'] ? '<div class="verified-badge" title="Sudah diverifikasi">✓</div>' : ''}
           <div class="rec-tag" style="background:${prioColor(r['Prioritas'])}">${prioShort(r['Prioritas'])}</div>
         </div>
       </div>
@@ -1777,16 +1840,25 @@ function renderData(){
         <div class="dd full">Jenis Paket<b>${r['Jenis Paket']||'-'}</b></div>
         <div class="dd">Tgl Instalasi<b>${fmtTgl(r['Tanggal Instalasi'])}</b></div>
         <div class="dd">Tgl Berakhir Kontrak<b>${fmtTgl(r['Tanggal Berakhir Kontrak'])}</b></div>
-        <div class="dd full">PIC / Teknisi<b>${r['PIC/Teknisi']||'-'}</b></div>
-        <div class="dd full">Nama Jaringan (SSID)<b>${r['Nama Jaringan']||'-'}</b></div>
+        <div class="dd full copyable" onclick="copyField('${escJsAttr(r['PIC/Teknisi'])}','PIC/Teknisi')">PIC / Teknisi<b>${r['PIC/Teknisi']||'-'} <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></b></div>
+        <div class="dd full copyable" onclick="copyField('${escJsAttr(r['Nama Jaringan'])}','Nama Jaringan (SSID)')">Nama Jaringan (SSID)<b>${r['Nama Jaringan']||'-'} <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></b></div>
         <div class="dd full">Password WiFi<b>${r['Password WiFi'] ? '••••••••' : '-'}</b></div>
         <div class="dd full">Terakhir Diupdate<b>${fmtTgl(r['Terakhir Diupdate'])}</b></div>
+        <div class="dd full">Verifikasi Terakhir<b>${r['Diverifikasi Pada'] ? ('✓ ' + fmtTgl(r['Diverifikasi Pada'])) : 'Belum diverifikasi'}</b></div>
+      </div>
+      <div class="rec-actions">
+        <button class="${r['Diverifikasi Pada'] ? 'verified' : 'verify'}" onclick="toggleVerified('${r._id}')">${r['Diverifikasi Pada'] ? '✓ Terverifikasi' : '☐ Tandai Terverifikasi'}</button>
       </div>
       ${(r['Nama Jaringan']||r['Password WiFi']) ? `
       <div class="rec-actions">
         <button onclick="copyWifiPass('${r._id}')">🔑 Salin Password</button>
         <button onclick="showWifiQr('${r._id}')">▦ QR WiFi</button>
       </div>` : ''}
+      <div class="rec-actions">
+        <button onclick="copyAllDetails('${r._id}')">⧉ Salin Semua</button>
+        <button onclick="shareRecord('${r._id}')">📤 Kirim Info</button>
+        <button onclick="duplicateRecord('${r._id}')">🗐 Duplikat</button>
+      </div>
       <div class="rec-actions">
         <button onclick="openDetail('${r._id}')">Detail</button>
         <button class="report" onclick="openReportForm('${r._id}')">Lapor</button>
@@ -1833,10 +1905,22 @@ function openDetail(id){
         </div>
         <button type="button" class="btn-secondary" style="margin-bottom:15px;" onclick="copyWifiPass('${r._id}')">🔑 Salin Password WiFi</button>`;
         }
+        if(f === 'Serial Number'){
+          return `
+        <div class="field">
+          <label>${f}</label>
+          <div class="input-with-btn">
+            <input type="text" name="${f}" id="editSerialInput" value="${r[f]!=null? String(r[f]).replace(/"/g,'&quot;'):''}">
+            <button type="button" class="scan-btn" onclick="openBarcodeScanner('editSerialInput')" title="Scan Barcode/QR">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+            </button>
+          </div>
+        </div>`;
+        }
         return `
         <div class="field">
           <label>${f}</label>
-          <input type="text" name="${f}" value="${r[f]!=null? String(r[f]).replace(/"/g,'&quot;'):''}">
+          <input type="text" name="${f}" value="${r[f]!=null? String(r[f]).replace(/"/g,'&quot;'):''}" ${f==='PIC/Teknisi' ? 'list="picDatalist"' : ''}>
         </div>`;
       }).join('')}
       <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -1960,6 +2044,169 @@ function fallbackCopy(text, label){
   catch(e){ showToast('Gagal menyalin'); }
   document.body.removeChild(ta);
 }
+
+/* ---------------- SALIN SEMUA / KIRIM / DUPLIKAT ---------------- */
+function buildRecordSummaryText(r){
+  const lines = [
+    r['Nama Ruangan'] || '(tanpa nama)',
+    `Lokasi: ${r['Lokasi']||'-'}`,
+    `Customer ID: ${r['Customer ID']||'-'}`,
+    `Serial Number: ${r['Serial Number']||'-'}`,
+    `Bandwidth: ${r['Bandwidth']||'-'}`,
+    `Jenis Paket: ${r['Jenis Paket']||'-'}`,
+    `Status Kontrak: ${r['Status Kontrak']||'-'}`,
+    `Tgl Instalasi: ${fmtTgl(r['Tanggal Instalasi'])}`,
+    `Tgl Berakhir Kontrak: ${fmtTgl(r['Tanggal Berakhir Kontrak'])}`,
+    `PIC/Teknisi: ${r['PIC/Teknisi']||'-'}`
+  ];
+  if(r['Nama Jaringan']) lines.push(`Nama WiFi (SSID): ${r['Nama Jaringan']}`);
+  return lines.join('\n');
+}
+function copyAllDetails(id){
+  const r = records.find(x=>x._id===id);
+  if(!r) return;
+  copyField(buildRecordSummaryText(r), 'Detail data');
+}
+function shareRecord(id){
+  const r = records.find(x=>x._id===id);
+  if(!r) return;
+  const text = buildRecordSummaryText(r);
+  const sheet = document.getElementById('modalSheet');
+  sheet.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">Kirim Info — ${r['Nama Ruangan']||'Data'}</div>
+    <div class="report-preview">${text.replace(/</g,'&lt;')}</div>
+    <div class="report-actions">
+      <button type="button" class="btn-wa" id="shareWaBtn">📲 Kirim via WhatsApp</button>
+      <button type="button" class="btn-tg" id="shareTgBtn">✈️ Kirim via Telegram</button>
+      <button type="button" class="btn-secondary" id="shareCopyBtn">⧉ Salin Teks</button>
+      <button type="button" class="btn-secondary" id="closeShareBtn">Tutup</button>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('shareWaBtn').addEventListener('click', () => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'));
+  document.getElementById('shareTgBtn').addEventListener('click', () => window.open('https://t.me/share/url?url=&text=' + encodeURIComponent(text), '_blank'));
+  document.getElementById('shareCopyBtn').addEventListener('click', () => copyField(text, 'Detail data'));
+  document.getElementById('closeShareBtn').addEventListener('click', closeModal);
+}
+function toggleVerified(id){
+  const r = records.find(x=>x._id===id);
+  if(!r) return;
+  if(r['Diverifikasi Pada']){
+    r['Diverifikasi Pada'] = '';
+    showToast('Tanda verifikasi dihapus');
+  } else {
+    r['Diverifikasi Pada'] = new Date().toISOString();
+    showToast('Data ditandai terverifikasi');
+  }
+  saveRecords();
+  renderData();
+}
+function duplicateRecord(id){
+  const r = records.find(x=>x._id===id);
+  if(!r) return;
+  if(!confirm(`Duplikat data "${r['Nama Ruangan']}"? Customer ID, Serial Number, dan Nama WiFi akan dikosongkan karena harus unik.`)) return;
+  const copy = {...r, _id: 'rec_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)};
+  copy['Customer ID'] = '';
+  copy['Serial Number'] = '';
+  copy['Nama Jaringan'] = '';
+  copy['Password WiFi'] = '';
+  copy['Nama Ruangan'] = (copy['Nama Ruangan']||'') + ' (Salinan)';
+  copy['Terakhir Diupdate'] = new Date().toISOString();
+  records.unshift(copy);
+  saveRecords();
+  renderData();
+  showToast('Data diduplikat, silakan lengkapi Customer ID & Serial Number');
+  openDetail(copy._id);
+}
+
+/* ---------------- SCAN BARCODE / QR (Serial Number) ---------------- */
+let _scannerStream = null;
+let _scannerRAF = null;
+let _scannerTargetId = null;
+
+async function openBarcodeScanner(targetInputId){
+  _scannerTargetId = targetInputId;
+
+  if(!('BarcodeDetector' in window)){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showToast('Perangkat/browser ini tidak mendukung scan barcode');
+      return;
+    }
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay show';
+  overlay.id = 'scannerOverlay';
+  overlay.innerHTML = `
+    <div class="modal-sheet" style="max-width:480px;">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Scan Barcode / QR Serial Number</div>
+      <div class="scanner-hint" id="scannerHint">Arahkan kamera ke barcode/QR pada perangkat</div>
+      <div class="scanner-wrap">
+        <video id="scannerVideo" autoplay playsinline muted></video>
+        <div class="scanner-frame"></div>
+      </div>
+      <button type="button" class="btn-secondary" id="scannerManualBtn" style="width:100%; margin-bottom:8px;">✏️ Ketik Manual Saja</button>
+      <button type="button" class="btn-secondary" id="scannerCloseBtn" style="width:100%;">Batal</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  document.getElementById('scannerCloseBtn').addEventListener('click', closeBarcodeScanner);
+  document.getElementById('scannerManualBtn').addEventListener('click', closeBarcodeScanner);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeBarcodeScanner(); });
+
+  try{
+    _scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  }catch(e){
+    document.getElementById('scannerHint').textContent = 'Tidak bisa mengakses kamera. Pastikan izin kamera diizinkan.';
+    return;
+  }
+  const video = document.getElementById('scannerVideo');
+  if(!video) { _scannerStream.getTracks().forEach(t=>t.stop()); return; }
+  video.srcObject = _scannerStream;
+
+  if(!('BarcodeDetector' in window)){
+    document.getElementById('scannerHint').textContent = 'Deteksi otomatis tidak didukung browser ini — ketik manual saja.';
+    return;
+  }
+
+  let detector;
+  try{
+    detector = new BarcodeDetector({ formats: ['qr_code','code_128','code_39','ean_13','ean_8','upc_a','upc_e','codabar','data_matrix'] });
+  }catch(e){
+    detector = new BarcodeDetector();
+  }
+
+  const scanLoop = async () => {
+    if(!document.getElementById('scannerOverlay')) return;
+    try{
+      const codes = await detector.detect(video);
+      if(codes && codes.length){
+        const value = (codes[0].rawValue || '').trim();
+        if(value){
+          const input = document.getElementById(_scannerTargetId);
+          if(input){ input.value = value; input.dispatchEvent(new Event('input', {bubbles:true})); }
+          showToast('Kode terdeteksi: ' + value);
+          closeBarcodeScanner();
+          return;
+        }
+      }
+    }catch(e){}
+    _scannerRAF = requestAnimationFrame(scanLoop);
+  };
+  _scannerRAF = requestAnimationFrame(scanLoop);
+}
+
+function closeBarcodeScanner(){
+  if(_scannerRAF) cancelAnimationFrame(_scannerRAF);
+  _scannerRAF = null;
+  if(_scannerStream){ _scannerStream.getTracks().forEach(t=>t.stop()); _scannerStream = null; }
+  const overlay = document.getElementById('scannerOverlay');
+  if(overlay) overlay.remove();
+}
+
 function showWifiQr(id){
   const r = records.find(x=>x._id===id);
   if(!r) return;

@@ -11,5 +11,28 @@
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Data Jaringan",
+      "short_name": "Jaringan",
+      "description": "Buka langsung modul Data Jaringan",
+      "url": "./index.html?open=jaringan",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "WiFi Vault",
+      "short_name": "WiFi",
+      "description": "Buka langsung modul WiFi Vault",
+      "url": "./index.html?open=wifi",
+      "icons": [{ "src": "wifi-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Buat Laporan",
+      "short_name": "Lapor",
+      "description": "Buka Data Jaringan untuk membuat laporan gangguan baru",
+      "url": "./index.html?open=jaringan",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }

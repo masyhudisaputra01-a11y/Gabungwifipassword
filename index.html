@@ -5,7 +5,14 @@
 <script>
 (function(){
   try{
-    var theme = localStorage.getItem('hub_theme_v1') || localStorage.getItem('sj_theme_v1') || localStorage.getItem('wv_theme_v1') || 'dark';
+    var mode = localStorage.getItem('hub_theme_mode_v1') || 'manual';
+    var theme;
+    if(mode === 'auto'){
+      var h = new Date().getHours();
+      theme = (h >= 6 && h < 18) ? 'light' : 'dark';
+    } else {
+      theme = localStorage.getItem('hub_theme_v1') || localStorage.getItem('sj_theme_v1') || localStorage.getItem('wv_theme_v1') || 'dark';
+    }
     document.documentElement.setAttribute('data-theme', theme);
   }catch(e){}
 })();
@@ -356,13 +363,27 @@ function showToast(msg){
 }
 
 /* ================= THEME ================= */
+const HUB_THEME_MODE_KEY = 'hub_theme_mode_v1';
 function currentHubTheme(){ return localStorage.getItem(HUB_THEME_KEY) || 'dark'; }
+function currentHubThemeMode(){ return localStorage.getItem(HUB_THEME_MODE_KEY) || 'manual'; }
+function resolveAutoTheme(){ const h = new Date().getHours(); return (h >= 6 && h < 18) ? 'light' : 'dark'; }
 function setHubTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem(HUB_THEME_KEY, theme);
   try{ ifJaringan.contentWindow && ifJaringan.contentWindow.applyTheme && ifJaringan.contentWindow.applyTheme(theme, true); }catch(e){}
   try{ ifWifi.contentWindow && ifWifi.contentWindow.setTheme && ifWifi.contentWindow.setTheme(theme, true); }catch(e){}
 }
+function setHubThemeMode(mode){
+  localStorage.setItem(HUB_THEME_MODE_KEY, mode);
+  if(mode === 'auto'){ setHubTheme(resolveAutoTheme()); }
+  else { setHubTheme(mode); }
+}
+setInterval(() => {
+  if(currentHubThemeMode() === 'auto'){
+    const resolved = resolveAutoTheme();
+    if(resolved !== currentHubTheme()) setHubTheme(resolved);
+  }
+}, 15 * 60000);
 window.addEventListener('storage', (e) => {
   if(e.key === HUB_THEME_KEY && e.newValue && e.newValue !== document.documentElement.getAttribute('data-theme')){
     document.documentElement.setAttribute('data-theme', e.newValue);
@@ -675,8 +696,18 @@ function renderRingkasan(){
   document.getElementById('cardJaringan').addEventListener('click', () => activate('jaringan'));
   document.getElementById('cardWifi').addEventListener('click', () => activate('wifi'));
   document.getElementById('statTotal').addEventListener('click', () => activate('jaringan'));
-  const so = document.getElementById('alertOverdue'); if(so) so.addEventListener('click', () => activate('jaringan'));
-  const ss = document.getElementById('alertSoon'); if(ss) ss.addEventListener('click', () => activate('jaringan'));
+  const so = document.getElementById('alertOverdue'); if(so) so.addEventListener('click', () => jumpToExpiring('overdue'));
+  const ss = document.getElementById('alertSoon'); if(ss) ss.addEventListener('click', () => jumpToExpiring('soon'));
+}
+function jumpToExpiring(kind){
+  activate('jaringan');
+  const tryJump = () => {
+    try{
+      if(ifJaringan.contentWindow && ifJaringan.contentWindow.hubGoToExpiring){ ifJaringan.contentWindow.hubGoToExpiring(kind); return; }
+    }catch(e){}
+    setTimeout(tryJump, 150);
+  };
+  setTimeout(tryJump, 200);
 }
 
 /* ================= GLOBAL SEARCH ================= */
@@ -687,15 +718,61 @@ const searchResults = document.getElementById('searchResults');
 document.getElementById('searchOpenBtn').addEventListener('click', () => {
   searchOverlay.classList.add('open');
   history.pushState({ hubNav:true, app: currentActiveApp(), overlay:'search' }, '', '#search');
+  if(!searchInputGlobal.value.trim()) renderSearchHistory();
   setTimeout(() => searchInputGlobal.focus(), 80);
 });
 document.getElementById('searchCloseBtn').addEventListener('click', () => { searchOverlay.classList.remove('open'); if(history.state && history.state.overlay === 'search') history.back(); });
 
 function escapeHtmlHub(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function doGlobalSearch(q){
+/* ---------------- RIWAYAT PENCARIAN ---------------- */
+const SEARCH_HISTORY_KEY = 'hub_search_history_v1';
+function getSearchHistory(){
+  try{ return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); }catch(e){ return []; }
+}
+function addSearchHistory(q){
+  q = (q||'').trim();
+  if(!q) return;
+  let hist = getSearchHistory().filter(h => h.toLowerCase() !== q.toLowerCase());
+  hist.unshift(q);
+  hist = hist.slice(0, 8);
+  try{ localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(hist)); }catch(e){}
+}
+function clearSearchHistory(){
+  try{ localStorage.removeItem(SEARCH_HISTORY_KEY); }catch(e){}
+  renderSearchHistory();
+}
+function renderSearchHistory(){
+  const hist = getSearchHistory();
+  if(hist.length === 0){
+    searchResults.innerHTML = '<div class="sr-empty">Ketik untuk mencari di Data Jaringan &amp; WiFi Vault sekaligus.</div>';
+    return;
+  }
+  searchResults.innerHTML = `
+    <div class="sr-group" style="display:flex; align-items:center; justify-content:space-between;">
+      <span>Pencarian Terakhir</span>
+      <span id="clearHistBtn" style="cursor:pointer; text-decoration:underline; font-weight:600;">Hapus</span>
+    </div>
+    ${hist.map(h => `
+      <div class="sr-item" data-history="${escapeHtmlHub(h)}">
+        <div class="sr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <div class="sr-body"><b>${escapeHtmlHub(h)}</b></div>
+      </div>`).join('')}
+  `;
+  const clearBtn = document.getElementById('clearHistBtn');
+  if(clearBtn) clearBtn.addEventListener('click', clearSearchHistory);
+  searchResults.querySelectorAll('.sr-item[data-history]').forEach(el => {
+    el.addEventListener('click', () => {
+      const q = el.dataset.history;
+      searchInputGlobal.value = q;
+      doGlobalSearch(q, true);
+    });
+  });
+}
+
+function doGlobalSearch(q, fromHistoryClick){
   q = (q||'').trim().toLowerCase();
-  if(!q){ searchResults.innerHTML = '<div class="sr-empty">Ketik untuk mencari di Data Jaringan &amp; WiFi Vault sekaligus.</div>'; return; }
+  if(!q){ renderSearchHistory(); return; }
 
   let jRecords = [];
   try{ jRecords = JSON.parse(localStorage.getItem('sj_records_v1') || '[]'); }catch(e){}
@@ -737,16 +814,18 @@ function doGlobalSearch(q){
       </div>`).join('');
   }
   searchResults.innerHTML = html;
+  if(!fromHistoryClick) addSearchHistory(q);
   searchResults.querySelectorAll('.sr-item').forEach(el => {
     el.addEventListener('click', () => {
       const app = el.dataset.app;
-      const q = el.dataset.q;
+      const q2 = el.dataset.q;
+      addSearchHistory(searchInputGlobal.value);
       searchOverlay.classList.remove('open');
       activate(app);
       const tryJump = () => {
         try{
-          if(app === 'jaringan' && ifJaringan.contentWindow && ifJaringan.contentWindow.hubGoToSearch){ ifJaringan.contentWindow.hubGoToSearch(q); return; }
-          if(app === 'wifi' && ifWifi.contentWindow && ifWifi.contentWindow.hubGoToSearch){ ifWifi.contentWindow.hubGoToSearch(q); return; }
+          if(app === 'jaringan' && ifJaringan.contentWindow && ifJaringan.contentWindow.hubGoToSearch){ ifJaringan.contentWindow.hubGoToSearch(q2); return; }
+          if(app === 'wifi' && ifWifi.contentWindow && ifWifi.contentWindow.hubGoToSearch){ ifWifi.contentWindow.hubGoToSearch(q2); return; }
         }catch(e){}
         setTimeout(tryJump, 150);
       };
@@ -759,6 +838,7 @@ searchInputGlobal.addEventListener('input', (e) => {
   clearTimeout(_searchDebounce);
   _searchDebounce = setTimeout(() => doGlobalSearch(e.target.value), 150);
 });
+searchInputGlobal.addEventListener('focus', () => { if(!searchInputGlobal.value.trim()) renderSearchHistory(); });
 
 /* ================= HUB SETTINGS MODAL ================= */
 function openModal(html){
@@ -781,6 +861,7 @@ document.getElementById('hubSettingsBtn').addEventListener('click', openHubSetti
 
 function openHubSettings(){
   const theme = currentHubTheme();
+  const themeMode = currentHubThemeMode();
   const adminSet = hasAdminHubPin();
   const staffSet = hasStaffHubPin();
   const autolock = localStorage.getItem(HUB_AUTOLOCK_KEY) || '0';
@@ -795,8 +876,9 @@ function openHubSettings(){
         <div class="settings-item">
           <span>Tema</span>
           <div class="theme-toggle">
-            <button type="button" data-theme-choice="dark" class="${theme==='dark'?'active':''}">Gelap</button>
-            <button type="button" data-theme-choice="light" class="${theme==='light'?'active':''}">Terang</button>
+            <button type="button" data-theme-choice="dark" class="${themeMode!=='auto' && theme==='dark'?'active':''}">Gelap</button>
+            <button type="button" data-theme-choice="light" class="${themeMode!=='auto' && theme==='light'?'active':''}">Terang</button>
+            <button type="button" data-theme-choice="auto" class="${themeMode==='auto'?'active':''}">Otomatis</button>
           </div>
         </div>
       </div>
@@ -855,7 +937,7 @@ function openHubSettings(){
     <button type="button" class="btn-full-secondary" id="closeHubSettingsBtn">Tutup</button>
   `);
   overlay.querySelectorAll('[data-theme-choice]').forEach(btn => {
-    btn.addEventListener('click', () => { setHubTheme(btn.dataset.themeChoice); closeModal(overlay); showToast('Tema diperbarui'); });
+    btn.addEventListener('click', () => { setHubThemeMode(btn.dataset.themeChoice); closeModal(overlay); showToast(btn.dataset.themeChoice==='auto' ? 'Tema otomatis diaktifkan (mengikuti jam)' : 'Tema diperbarui'); });
   });
   overlay.querySelector('#hubAdminPinBtn').addEventListener('click', () => { closeModal(overlay); openPinManager('admin'); });
   overlay.querySelector('#hubStaffPinBtn').addEventListener('click', () => { closeModal(overlay); openPinManager('staff'); });
@@ -944,8 +1026,16 @@ function hubBackupAll(mode){
 /* ================= BOOT ================= */
 function boot(){
   document.getElementById('lockScreen').classList.remove('show');
+  if(currentHubThemeMode() === 'auto'){
+    const resolved = resolveAutoTheme();
+    if(resolved !== currentHubTheme()) setHubTheme(resolved);
+  }
   let initial = 'ringkasan';
   try{ initial = localStorage.getItem(HUB_KEY) || 'ringkasan'; }catch(e){}
+  try{
+    const shortcutOpen = new URLSearchParams(location.search).get('open');
+    if(shortcutOpen === 'jaringan' || shortcutOpen === 'wifi') initial = shortcutOpen;
+  }catch(e){}
   history.replaceState({ hubNav:true, app: initial }, '', '#'+initial);
   activate(initial, true);
   if('serviceWorker' in navigator){
