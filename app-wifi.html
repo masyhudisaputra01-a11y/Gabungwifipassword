@@ -105,6 +105,21 @@
   .chip{flex-shrink:0; padding:7px 13px; border-radius:999px; background:var(--card-alt); border:1px solid var(--line); color:var(--ink-soft); font-size:12.5px; font-weight:600; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:5px;}
   .chip.active{background:rgba(34,211,238,.16); border-color:var(--gold); color:var(--gold-soft);}
 
+  #scannerVideoWifi{ width:100%; border-radius:12px; background:#000; max-height:50vh; object-fit:cover; }
+  .scanner-wrap-wifi{ position:relative; border-radius:12px; overflow:hidden; margin-bottom:14px; }
+  .scanner-frame-wifi{ position:absolute; inset:18% 12%; border:2px solid var(--gold); border-radius:12px; box-shadow:0 0 0 2000px rgba(0,0,0,.35); pointer-events:none; }
+
+  .bulk-bar-wifi{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.3); border-radius:10px; padding:9px 12px; margin:10px 0; }
+  .bulk-bar-wifi .bulk-count{ font-size:12.5px; font-weight:700; color:var(--gold-deep); }
+  .bulk-bar-wifi .bulk-actions-inline{ display:flex; gap:6px; flex-wrap:wrap; }
+  .bulk-bar-wifi button{ border:none; background:var(--card-alt); color:var(--ink); font-size:11.5px; font-weight:700; padding:7px 11px; border-radius:8px; cursor:pointer; }
+  .bulk-bar-wifi button.danger-btn{ background:rgba(248,113,113,.14); color:var(--danger); }
+  .wifi-card{ position:relative; }
+  .wifi-card.bulk-mode-card{ padding-right:40px; cursor:pointer; }
+  .wifi-card.bulk-mode-card .wc-toolbar, .wifi-card.bulk-mode-card .act-toggle, .wifi-card.bulk-mode-card .act-copy{ pointer-events:none; opacity:.5; }
+  .wc-select-check{ position:absolute; top:12px; right:12px; width:22px; height:22px; border-radius:6px; border:2px solid var(--line); background:var(--card); display:flex; align-items:center; justify-content:center; z-index:2; font-size:13px; font-weight:800; color:#04121A; }
+  .wc-select-check.checked{ background:var(--gold); border-color:var(--gold); }
+
   .group-header{font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:16px 2px 8px; display:flex; align-items:center; gap:6px; text-transform:uppercase; letter-spacing:.4px;}
 
   .wifi-list{display:flex; flex-direction:column; gap:10px; margin-top:12px;}
@@ -319,6 +334,67 @@ function logActivity(action, detail){
 }
 function getUsername(){ return localStorage.getItem(USERNAME_KEY) || 'Pengguna'; }
 
+/* ================= TEMPAT SAMPAH (SOFT DELETE) ================= */
+const TRASH_KEY = 'wv_trash_v1';
+function getTrash(){ try{ return JSON.parse(localStorage.getItem(TRASH_KEY) || '[]'); }catch(e){ return []; } }
+function saveTrash(trash){ localStorage.setItem(TRASH_KEY, JSON.stringify(trash)); }
+function moveToTrash(rec){
+  const trash = getTrash();
+  trash.unshift({ ...rec, _deletedAt: new Date().toISOString() });
+  saveTrash(trash.slice(0, 200));
+}
+function restoreFromTrash(id){
+  const trash = getTrash();
+  const idx = trash.findIndex(x=>x.id===id);
+  if(idx === -1) return;
+  const rec = {...trash[idx]};
+  delete rec._deletedAt;
+  trash.splice(idx,1);
+  saveTrash(trash);
+  records.push(rec);
+  saveRecords();
+  logActivity('Pulihkan WiFi', rec.ssid);
+  refreshCurrentView();
+  showToast('WiFi dipulihkan dari sampah');
+  openTrashManager();
+}
+function permanentlyDeleteTrash(id){
+  if(!confirm('Hapus permanen data ini? Tidak bisa dikembalikan lagi.')) return;
+  saveTrash(getTrash().filter(x=>x.id!==id));
+  openTrashManager();
+}
+function emptyWifiTrash(){
+  if(getTrash().length === 0) return;
+  if(!confirm('Kosongkan seluruh sampah? Semua data di dalamnya akan terhapus permanen.')) return;
+  saveTrash([]);
+  logActivity('Kosongkan Sampah WiFi', '');
+  openTrashManager();
+}
+function openTrashManager(){
+  const trash = getTrash();
+  const overlay = openModal(`
+    <div class="close-x" id="closeTrashBtn">✕</div>
+    <div class="modal-title">Tempat Sampah (${trash.length})</div>
+    <div style="font-size:12px; color:var(--ink-faint); margin-bottom:10px;">Data yang dihapus disimpan di sini sampai dikosongkan manual.</div>
+    <div>
+      ${trash.length === 0 ? '<div class="empty-state" style="padding:20px 0;"><p>Sampah kosong.</p></div>' : trash.map(r=>`
+        <div style="display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--line);">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:13.5px; font-weight:600;">${escapeHtml(r.ssid||'(tanpa nama)')}</div>
+            <div style="font-size:11px; color:var(--ink-faint);">Dihapus ${new Date(r._deletedAt).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <button class="btn-secondary" style="width:auto; margin:0; padding:8px 12px;" onclick="restoreFromTrash('${r.id}')">Pulihkan</button>
+          <button class="btn-secondary" style="width:auto; margin:0; padding:8px 12px; color:var(--danger);" onclick="permanentlyDeleteTrash('${r.id}')">Hapus</button>
+        </div>`).join('')}
+    </div>
+    ${trash.length ? '<button class="btn-danger" id="emptyTrashBtn">Kosongkan Semua Sampah</button>' : ''}
+  `);
+  overlay.querySelector('#closeTrashBtn').addEventListener('click', () => closeModal(overlay));
+  const emptyBtn = overlay.querySelector('#emptyTrashBtn');
+  if(emptyBtn) emptyBtn.addEventListener('click', emptyWifiTrash);
+}
+
+
 /* ================= TOAST ================= */
 let toastTimer;
 function showToast(msg){
@@ -464,12 +540,19 @@ function renderData(){
     <div class="filter-row" id="bandFilterRow">
       ${bands.map(b => `<div class="chip ${dataFilter.band===b?'active':''}" data-band="${b}">${b==='all'?'Semua Band':b}</div>`).join('')}
       <div class="chip ${dataFilter.groupByLocation?'active':''}" id="groupChip">📍 Kelompokkan Lokasi</div>
+      ${currentRole !== 'staff' ? '<div class="chip" id="scanAddChip">📷 Scan QR Tambah</div>' : ''}
+      ${currentRole !== 'staff' ? '<div class="chip" id="bulkToggleChip">☑ Pilih Banyak</div>' : ''}
     </div>
+    <div id="wifiBulkBar" style="display:none;"></div>
     <div class="wifi-list" id="wifiListWrap"></div>
   `;
   document.getElementById('searchInput').addEventListener('input', (e) => { dataFilter.search = e.target.value; renderWifiList(); });
   document.querySelectorAll('#bandFilterRow .chip[data-band]').forEach(c => c.addEventListener('click', () => { dataFilter.band = c.dataset.band; renderData(); }));
   document.getElementById('groupChip').addEventListener('click', () => { dataFilter.groupByLocation = !dataFilter.groupByLocation; renderData(); });
+  const scanChip = document.getElementById('scanAddChip');
+  if(scanChip) scanChip.addEventListener('click', openWifiQrScanner);
+  const bulkChip = document.getElementById('bulkToggleChip');
+  if(bulkChip) bulkChip.addEventListener('click', toggleWifiBulkMode);
   renderWifiList();
 }
 
@@ -482,6 +565,7 @@ function renderWifiList(){
     const matchBand = dataFilter.band === 'all' || r.band === dataFilter.band;
     return matchQ && matchBand;
   });
+  renderWifiBulkBar(list);
 
   if(list.length === 0){
     wrap.innerHTML = `<div class="empty-state">
@@ -509,8 +593,10 @@ function wifiCardHtml(r){
   const isRevealed = currentRole === 'admin' && !!revealed[r.id];
   const passDisplay = isRevealed ? escapeHtml(r.password || '(tanpa password)') : '•'.repeat(Math.min(12, Math.max(6,(r.password||'').length || 8)));
   const isStaff = currentRole === 'staff';
+  const bulkOn = wifiBulkMode && !isStaff;
   return `
-  <div class="wifi-card ${r.pinned?'pinned':''}" data-id="${r.id}">
+  <div class="wifi-card ${r.pinned?'pinned':''} ${bulkOn?'bulk-mode-card':''}" data-id="${r.id}">
+    ${bulkOn ? `<div class="wc-select-check ${wifiBulkSelected.has(r.id)?'checked':''}">${wifiBulkSelected.has(r.id)?'✓':''}</div>` : ''}
     <div class="wc-top">
       <div class="wc-icon">${ICON_WIFI}</div>
       <div style="flex:1; min-width:0;">
@@ -533,6 +619,8 @@ function wifiCardHtml(r){
       <button class="icon-btn act-pin ${r.pinned?'on':''}" title="Favorit">${ICON_STAR(!!r.pinned)}</button>
       <button class="icon-btn act-copyall" title="Salin semua">${ICON_COPYALL} Salin</button>
       <button class="icon-btn qr act-qr" title="QR Connect">${ICON_QR} QR</button>
+      <button class="icon-btn act-share" title="Kirim Info">📤 Kirim</button>
+      <button class="icon-btn act-dup" title="Duplikat">🗐 Duplikat</button>
       <button class="icon-btn act-print" title="Cetak label">${ICON_PRINT} Cetak</button>
       <button class="icon-btn act-edit" title="Edit">${ICON_EDIT} Edit</button>
       <button class="icon-btn danger act-delete" title="Hapus">${ICON_TRASH} Hapus</button>
@@ -547,6 +635,10 @@ function bindCardEvents(scope){
     const id = card.dataset.id;
     const rec = records.find(r => r.id === id);
     if(!rec) return;
+    if(wifiBulkMode){
+      card.addEventListener('click', () => toggleWifiBulkSelect(id));
+      return;
+    }
     card.querySelector('.act-toggle')?.addEventListener('click', () => { revealed[id] = !revealed[id]; refreshCurrentView(); });
     card.querySelector('.act-copy')?.addEventListener('click', () => copyText(rec.password || '', 'Password'));
     card.querySelector('.act-copyssid')?.addEventListener('click', () => copyText(rec.ssid || '', 'SSID'));
@@ -556,11 +648,187 @@ function bindCardEvents(scope){
     card.querySelector('.act-edit')?.addEventListener('click', () => openFormModal(rec));
     card.querySelector('.act-delete')?.addEventListener('click', () => confirmDelete(rec));
     card.querySelector('.act-pin')?.addEventListener('click', () => { rec.pinned = !rec.pinned; saveRecords(); logActivity(rec.pinned?'Pin':'Unpin', rec.ssid); refreshCurrentView(); });
+    card.querySelector('.act-dup')?.addEventListener('click', () => duplicateWifiRecord(rec));
+    card.querySelector('.act-share')?.addEventListener('click', () => shareWifiRecord(rec));
   });
 }
 function refreshCurrentView(){
   if(!document.getElementById('viewDashboard').hidden) renderDashboard();
   else if(!document.getElementById('viewData').hidden) renderWifiList();
+}
+
+/* ================= DUPLIKAT ================= */
+function duplicateWifiRecord(rec){
+  if(currentRole === 'staff'){ showToast('Hanya Admin yang bisa menduplikat data'); return; }
+  const copy = { ...rec, id: uid(), ssid: (rec.ssid||'') + ' (Salinan)', pinned:false, passwordHistory:[], updatedAt: new Date().toISOString(), updatedBy: getUsername() };
+  records.push(copy);
+  saveRecords();
+  logActivity('Duplikat WiFi', copy.ssid);
+  refreshCurrentView();
+  showToast('WiFi diduplikat');
+  openFormModal(copy);
+}
+
+/* ================= KIRIM INFO (WA/TELEGRAM) ================= */
+function shareWifiRecord(rec){
+  const text = `${rec.ssid || '(tanpa nama)'}\nPassword: ${rec.password || '(tanpa password)'}\nLokasi: ${rec.lokasi || '-'}${rec.catatan ? '\nCatatan: '+rec.catatan : ''}`;
+  const overlay = openModal(`
+    <div class="close-x" id="closeShareBtn">✕</div>
+    <div class="modal-title">Kirim Info — ${escapeHtml(rec.ssid||'WiFi')}</div>
+    <div style="white-space:pre-wrap; background:var(--navy-950); border:1px solid var(--line); border-radius:10px; padding:12px; font-size:13px; margin-bottom:14px; font-family:var(--font-mono, monospace);">${escapeHtml(text)}</div>
+    <button class="btn-primary" id="shareWaBtn" style="background:linear-gradient(160deg,#2CD46B,#1DAA55);">📲 Kirim via WhatsApp</button>
+    <button class="btn-primary" id="shareTgBtn" style="background:linear-gradient(160deg,#3DB4E8,#1B94D2); margin-top:8px;">✈️ Kirim via Telegram</button>
+    <button class="btn-secondary" id="shareCopyBtn">⧉ Salin Teks</button>
+  `);
+  overlay.querySelector('#closeShareBtn').addEventListener('click', () => closeModal(overlay));
+  overlay.querySelector('#shareWaBtn').addEventListener('click', () => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'));
+  overlay.querySelector('#shareTgBtn').addEventListener('click', () => window.open('https://t.me/share/url?url=&text=' + encodeURIComponent(text), '_blank'));
+  overlay.querySelector('#shareCopyBtn').addEventListener('click', () => copyText(text, 'Info WiFi'));
+}
+
+/* ================= SCAN QR UNTUK TAMBAH WIFI ================= */
+let _wvScannerStream = null;
+let _wvScannerRAF = null;
+function parseWifiQrString(raw){
+  const m = raw.match(/^WIFI:(.*);;?$/i);
+  if(!m) return null;
+  const body = m[1];
+  const out = {};
+  body.split(';').forEach(part=>{
+    const idx = part.indexOf(':');
+    if(idx === -1) return;
+    const key = part.slice(0,idx).toUpperCase();
+    let val = part.slice(idx+1).replace(/\\(.)/g, '$1');
+    if(key === 'S') out.ssid = val;
+    if(key === 'P') out.password = val;
+    if(key === 'T') out.security = val.toUpperCase() === 'NOPASS' ? 'Tanpa Password' : (val.toUpperCase()==='WPA3'?'WPA3':(val.toUpperCase()==='WPA'?'WPA2':val));
+  });
+  return out.ssid ? out : null;
+}
+async function openWifiQrScanner(){
+  if(!('BarcodeDetector' in window)){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ showToast('Perangkat/browser ini tidak mendukung scan QR'); return; }
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'wvScannerOverlay';
+  overlay.innerHTML = `
+    <div class="modal-sheet" style="max-width:480px;">
+      <div class="close-x" id="wvScannerCloseX">✕</div>
+      <div class="modal-title">Scan QR WiFi</div>
+      <div style="font-size:12px; color:var(--ink-soft); text-align:center; margin-bottom:10px;" id="wvScannerHint">Arahkan kamera ke stiker QR WiFi di router</div>
+      <div class="scanner-wrap-wifi">
+        <video id="wvScannerVideo" autoplay playsinline muted style="width:100%; border-radius:12px; background:#000; max-height:50vh; object-fit:cover;"></video>
+        <div class="scanner-frame-wifi"></div>
+      </div>
+      <button type="button" class="btn-secondary" id="wvScannerCancelBtn" style="width:100%;">Batal</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = () => closeWifiQrScanner();
+  overlay.querySelector('#wvScannerCloseX').addEventListener('click', close);
+  overlay.querySelector('#wvScannerCancelBtn').addEventListener('click', close);
+  overlay.addEventListener('click', (e)=>{ if(e.target === overlay) close(); });
+
+  try{
+    _wvScannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  }catch(e){
+    document.getElementById('wvScannerHint').textContent = 'Tidak bisa mengakses kamera. Pastikan izin kamera diizinkan.';
+    return;
+  }
+  const video = document.getElementById('wvScannerVideo');
+  if(!video){ _wvScannerStream.getTracks().forEach(t=>t.stop()); return; }
+  video.srcObject = _wvScannerStream;
+
+  if(!('BarcodeDetector' in window)){
+    document.getElementById('wvScannerHint').textContent = 'Deteksi otomatis tidak didukung browser ini.';
+    return;
+  }
+  let detector;
+  try{ detector = new BarcodeDetector({ formats:['qr_code'] }); }catch(e){ detector = new BarcodeDetector(); }
+
+  const loop = async () => {
+    if(!document.getElementById('wvScannerOverlay')) return;
+    try{
+      const codes = await detector.detect(video);
+      if(codes && codes.length){
+        const raw = (codes[0].rawValue||'').trim();
+        const parsed = parseWifiQrString(raw);
+        if(parsed){
+          showToast('QR WiFi terdeteksi: ' + parsed.ssid);
+          closeWifiQrScanner();
+          openFormModal(null, parsed);
+          return;
+        }
+      }
+    }catch(e){}
+    _wvScannerRAF = requestAnimationFrame(loop);
+  };
+  _wvScannerRAF = requestAnimationFrame(loop);
+}
+function closeWifiQrScanner(){
+  if(_wvScannerRAF) cancelAnimationFrame(_wvScannerRAF);
+  _wvScannerRAF = null;
+  if(_wvScannerStream){ _wvScannerStream.getTracks().forEach(t=>t.stop()); _wvScannerStream = null; }
+  const overlay = document.getElementById('wvScannerOverlay');
+  if(overlay) overlay.remove();
+}
+
+/* ================= BULK ACTIONS ================= */
+let wifiBulkMode = false;
+let wifiBulkSelected = new Set();
+function toggleWifiBulkMode(){
+  wifiBulkMode = !wifiBulkMode;
+  if(!wifiBulkMode) wifiBulkSelected.clear();
+  renderWifiList();
+}
+function toggleWifiBulkSelect(id){
+  if(wifiBulkSelected.has(id)) wifiBulkSelected.delete(id);
+  else wifiBulkSelected.add(id);
+  renderWifiList();
+}
+function renderWifiBulkBar(visibleList){
+  const bar = document.getElementById('wifiBulkBar');
+  if(!bar) return;
+  if(!wifiBulkMode){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'block';
+  const visibleIds = visibleList.map(r=>r.id);
+  const selectedInView = visibleIds.filter(id=>wifiBulkSelected.has(id)).length;
+  bar.innerHTML = `
+    <div class="bulk-bar-wifi">
+      <span class="bulk-count">${wifiBulkSelected.size} WiFi dipilih</span>
+      <div class="bulk-actions-inline">
+        <button type="button" id="wvBulkSelectAllBtn">${selectedInView===visibleIds.length && visibleIds.length>0 ? 'Batal Semua' : 'Pilih Semua'}</button>
+        <button type="button" id="wvBulkExportBtn">Excel</button>
+        <button type="button" class="danger-btn" id="wvBulkDeleteBtn">Hapus</button>
+        <button type="button" id="wvBulkCancelBtn">Selesai</button>
+      </div>
+    </div>
+  `;
+  bar.querySelector('#wvBulkSelectAllBtn').addEventListener('click', ()=>{
+    if(selectedInView===visibleIds.length && visibleIds.length>0){ visibleIds.forEach(id=>wifiBulkSelected.delete(id)); }
+    else { visibleIds.forEach(id=>wifiBulkSelected.add(id)); }
+    renderWifiList();
+  });
+  bar.querySelector('#wvBulkExportBtn').addEventListener('click', ()=>{
+    if(wifiBulkSelected.size===0){ showToast('Belum ada WiFi dipilih'); return; }
+    exportExcel(records.filter(r=>wifiBulkSelected.has(r.id)));
+    logActivity('Export Excel Terpilih', `${wifiBulkSelected.size} data`);
+  });
+  bar.querySelector('#wvBulkDeleteBtn').addEventListener('click', ()=>{
+    if(wifiBulkSelected.size===0){ showToast('Belum ada WiFi dipilih'); return; }
+    if(!confirm(`Hapus ${wifiBulkSelected.size} WiFi terpilih? Data akan dipindah ke Tempat Sampah.`)) return;
+    const toDelete = records.filter(r=>wifiBulkSelected.has(r.id));
+    toDelete.forEach(r=>moveToTrash(r));
+    records = records.filter(r=>!wifiBulkSelected.has(r.id));
+    saveRecords();
+    logActivity('Hapus Massal WiFi', `${toDelete.length} data`);
+    wifiBulkSelected.clear();
+    wifiBulkMode = false;
+    renderWifiList();
+    showToast(`${toDelete.length} WiFi dipindah ke Tempat Sampah`);
+  });
+  bar.querySelector('#wvBulkCancelBtn').addEventListener('click', toggleWifiBulkMode);
 }
 
 /* ================= MODAL HELPERS ================= */
@@ -587,10 +855,10 @@ function generatePassword(len=14){
 }
 
 /* ================= ADD / EDIT FORM ================= */
-function openFormModal(rec){
+function openFormModal(rec, prefillData){
   if(currentRole === 'staff'){ showToast('Hanya Admin yang bisa menambah/mengubah data'); return; }
   const editing = !!rec;
-  const r = rec || { ssid:'', password:'', security:'WPA2', lokasi:'', band:'2.4GHz', catatan:'', passwordHistory:[] };
+  const r = rec || { ssid:'', password:'', security:'WPA2', lokasi:'', band:'2.4GHz', catatan:'', passwordHistory:[], ...(prefillData||{}) };
   const overlay = openModal(`
     <div class="close-x" id="closeFormBtn">✕</div>
     <div class="modal-title">${editing ? 'Edit WiFi' : 'Tambah WiFi Baru'}</div>
@@ -603,6 +871,7 @@ function openFormModal(rec){
         <button type="button" class="gen-btn" id="f_genBtn">🎲 Acak</button>
       </div>
       ${editing && r.passwordHistory && r.passwordHistory.length ? `<span class="history-link" id="viewHistoryBtn">${ICON_HISTORY} Lihat riwayat password (${r.passwordHistory.length})</span>` : ''}
+      <div id="pwStrengthBar" style="margin-top:8px;"></div>
     </div>
     <div class="field-row">
       <div class="field">
@@ -626,8 +895,38 @@ function openFormModal(rec){
     if(passInput.type === 'password'){ passInput.type='text'; btn.innerHTML = ICON_EYE_OFF; }
     else { passInput.type='password'; btn.innerHTML = ICON_EYE; }
   });
-  overlay.querySelector('#f_genBtn').addEventListener('click', () => { passInput.value = generatePassword(14); passInput.type='text'; overlay.querySelector('#f_toggleShowBtn').innerHTML = ICON_EYE_OFF; showToast('Password acak dibuat'); });
+  overlay.querySelector('#f_genBtn').addEventListener('click', () => { passInput.value = generatePassword(14); passInput.type='text'; overlay.querySelector('#f_toggleShowBtn').innerHTML = ICON_EYE_OFF; showToast('Password acak dibuat'); updatePwStrength(); });
   overlay.querySelector('#viewHistoryBtn')?.addEventListener('click', () => openHistoryModal(r));
+  function updatePwStrength(){
+    const bar = overlay.querySelector('#pwStrengthBar');
+    if(!bar) return;
+    const pw = passInput.value;
+    if(!pw){ bar.innerHTML = ''; return; }
+    let score = 0;
+    if(pw.length >= 8) score++;
+    if(pw.length >= 12) score++;
+    if(/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+    if(/[0-9]/.test(pw)) score++;
+    if(/[^A-Za-z0-9]/.test(pw)) score++;
+    const levels = [
+      { label:'Sangat Lemah', color:'#F87171' },
+      { label:'Lemah', color:'#F87171' },
+      { label:'Cukup', color:'#FBBF24' },
+      { label:'Kuat', color:'#34D399' },
+      { label:'Sangat Kuat', color:'#34D399' },
+      { label:'Sangat Kuat', color:'#34D399' }
+    ];
+    const lvl = levels[Math.min(score, levels.length-1)];
+    const pct = Math.min(100, (score/5)*100);
+    bar.innerHTML = `
+      <div style="height:5px; background:var(--line); border-radius:99px; overflow:hidden;">
+        <div style="height:100%; width:${pct}%; background:${lvl.color}; transition:width .2s;"></div>
+      </div>
+      <div style="font-size:11px; margin-top:4px; color:${lvl.color}; font-weight:600;">${lvl.label}${pw.length < 8 ? ' — minimal 8 karakter disarankan' : ''}</div>
+    `;
+  }
+  passInput.addEventListener('input', updatePwStrength);
+  updatePwStrength();
   overlay.querySelector('#f_saveBtn').addEventListener('click', () => {
     const ssid = overlay.querySelector('#f_ssid').value.trim();
     if(!ssid){ showToast('Nama WiFi wajib diisi'); return; }
@@ -682,17 +981,18 @@ function confirmDelete(rec){
   if(currentRole === 'staff'){ showToast('Hanya Admin yang bisa menghapus data'); return; }
   const overlay = openModal(`
     <div class="modal-title">Hapus WiFi?</div>
-    <div style="font-size:13.5px; color:var(--ink-soft); margin-bottom:6px;">"${escapeHtml(rec.ssid)}" akan dihapus permanen dari WiFi Vault.</div>
+    <div style="font-size:13.5px; color:var(--ink-soft); margin-bottom:6px;">"${escapeHtml(rec.ssid)}" akan dipindah ke Tempat Sampah dan bisa dipulihkan nanti.</div>
     <button class="btn-danger" id="confirmDelBtn">Ya, Hapus</button>
     <button class="btn-secondary" id="cancelDelBtn">Batal</button>
   `, {centered:true});
   overlay.querySelector('#confirmDelBtn').addEventListener('click', () => {
+    moveToTrash(rec);
     records = records.filter(r => r.id !== rec.id);
     logActivity('Hapus WiFi', rec.ssid);
     saveRecords();
     closeModal(overlay);
     refreshCurrentView();
-    showToast('WiFi dihapus');
+    showToast('WiFi dipindah ke Tempat Sampah');
   });
   overlay.querySelector('#cancelDelBtn').addEventListener('click', () => closeModal(overlay));
 }
@@ -730,10 +1030,11 @@ function printLabel(rec){
 }
 
 /* ================= EXCEL / JSON IMPORT-EXPORT ================= */
-function exportExcel(){
+function exportExcel(list){
   if(typeof XLSX === 'undefined'){ showToast('Perlu koneksi internet untuk ekspor Excel'); return; }
-  if(records.length === 0){ showToast('Belum ada data untuk diekspor'); return; }
-  const rows = records.map(r => ({
+  const data = list || records;
+  if(data.length === 0){ showToast('Belum ada data untuk diekspor'); return; }
+  const rows = data.map(r => ({
     'Nama WiFi (SSID)': r.ssid, 'Password': r.password, 'Keamanan': r.security,
     'Band': r.band, 'Lokasi': r.lokasi, 'Catatan': r.catatan,
     'Terakhir Diperbarui': r.updatedAt ? new Date(r.updatedAt).toLocaleString('id-ID') : ''
@@ -741,8 +1042,8 @@ function exportExcel(){
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Data WiFi');
-  XLSX.writeFile(wb, `WiFi_Vault_${new Date().toISOString().slice(0,10)}.xlsx`);
-  logActivity('Ekspor Excel', `${records.length} data`);
+  XLSX.writeFile(wb, `WiFi_Vault_${list ? 'Terpilih_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`);
+  if(!list) logActivity('Ekspor Excel', `${data.length} data`);
   showToast('File Excel diunduh');
 }
 function importExcel(e){
@@ -930,6 +1231,10 @@ function renderSettings(){
     <div class="section-title">Lainnya</div>
     <div class="card">
       <div class="settings-item">
+        <span>Tempat Sampah<small>${getTrash().length} data terhapus, bisa dipulihkan</small></span>
+        <button type="button" class="btn-secondary" style="width:auto; margin:0; padding:9px 14px;" id="openTrashBtn">Buka</button>
+      </div>
+      <div class="settings-item">
         <span>Hapus Semua Data<small>Tindakan ini tidak bisa dibatalkan</small></span>
         <button type="button" class="btn-secondary" style="width:auto; margin:0; padding:9px 14px; color:var(--danger); border-color:rgba(248,113,113,.3);" id="clearAllBtn">Hapus</button>
       </div>
@@ -941,7 +1246,7 @@ function renderSettings(){
   if(el.querySelector('#adminPinBtn')) el.querySelector('#adminPinBtn').addEventListener('click', () => openPinManager('admin'));
   if(el.querySelector('#staffPinBtn')) el.querySelector('#staffPinBtn').addEventListener('click', () => openPinManager('staff'));
   if(el.querySelector('#autolockSelect')) el.querySelector('#autolockSelect').addEventListener('change', (e) => { localStorage.setItem(AUTOLOCK_KEY, e.target.value); showToast('Pengaturan kunci otomatis disimpan'); });
-  el.querySelector('#exportExcelBtn').addEventListener('click', exportExcel);
+  el.querySelector('#exportExcelBtn').addEventListener('click', () => exportExcel());
   el.querySelector('#importExcelBtn').addEventListener('click', () => el.querySelector('#importExcelFile').click());
   el.querySelector('#importExcelFile').addEventListener('change', importExcel);
   el.querySelector('#exportJsonBtn').addEventListener('click', exportJson);
@@ -951,6 +1256,7 @@ function renderSettings(){
   el.querySelector('#gdriveUploadBtn').addEventListener('click', () => gdriveSync('upload'));
   el.querySelector('#gdriveDownloadBtn').addEventListener('click', () => gdriveSync('download'));
   el.querySelector('#clearAllBtn').addEventListener('click', confirmClearAll);
+  el.querySelector('#openTrashBtn').addEventListener('click', openTrashManager);
 }
 
 /* ================= GOOGLE DRIVE SYNC ================= */
