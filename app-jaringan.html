@@ -365,6 +365,17 @@
   }
 
   .result-count{font-size:11px; color:var(--ink-faint); margin:2px 2px 10px; letter-spacing:.4px; font-weight:500; text-transform:uppercase;}
+  .bulk-bar{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.3); border-radius:10px; padding:9px 12px; margin:-2px 2px 12px; }
+  .bulk-bar .bulk-count{ font-size:12.5px; font-weight:700; color:var(--gold-deep); }
+  .bulk-bar .bulk-actions-inline{ display:flex; gap:6px; flex-wrap:wrap; }
+  .bulk-bar button{ border:none; background:var(--card-alt); color:var(--ink); font-size:11.5px; font-weight:700; padding:7px 11px; border-radius:8px; cursor:pointer; }
+  .bulk-bar button.danger-btn{ background:var(--danger-bg); color:var(--danger); }
+  .rec-select-check{ position:absolute; top:12px; right:12px; width:22px; height:22px; border-radius:6px; border:2px solid var(--line); background:var(--card); display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer; }
+  .rec-select-check.checked{ background:var(--gold); border-color:var(--gold); color:#04121A; }
+  .rec-card{ position:relative; }
+  .rec-card.bulk-mode{ padding-right:44px; cursor:pointer; }
+  .rec-card.bulk-mode .rec-actions{ display:none; }
+  .rec-card.bulk-mode .copyable{ pointer-events:none; }
   .expiry-banner{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.3); color:#F87171; border-radius:10px; padding:10px 12px; margin:-2px 2px 12px; font-size:12.5px; font-weight:600; }
   .expiry-banner.warn{ background:rgba(251,191,36,.12); border-color:rgba(251,191,36,.35); color:#B8860B; }
   html[data-theme="dark"] .expiry-banner.warn{ color:#FBBF24; }
@@ -602,6 +613,8 @@
   }
   .action-btn:active{transform:scale(.96);}
   .action-btn svg{width:18px; height:18px; color:var(--gold-deep);}
+  .action-btn.active-bulk{ background:var(--gold); color:#04121A; border-color:var(--gold); }
+  .action-btn.active-bulk svg{ color:#04121A; }
 
   /* ---------- PRINT REPORT (hidden on screen) ---------- */
   #printArea{display:none;}
@@ -760,6 +773,14 @@
       <button class="chip" data-prio="PRIORITAS 3">Prioritas 3</button>
     </div>
     <select class="loc-filter" id="locFilter"><option value="ALL">Semua Lokasi</option></select>
+    <select class="loc-filter" id="sortSelect" style="margin-top:6px;">
+      <option value="default">Urutkan: Terbaru Diubah</option>
+      <option value="nama_asc">Nama Ruangan (A-Z)</option>
+      <option value="nama_desc">Nama Ruangan (Z-A)</option>
+      <option value="instalasi_desc">Tgl Instalasi (Terbaru)</option>
+      <option value="instalasi_asc">Tgl Instalasi (Terlama)</option>
+      <option value="kontrak_asc">Kontrak Akan Habis Duluan</option>
+    </select>
     <div class="chip-row" id="statusChips">
       <button class="chip active" data-status="ALL">Semua Status</button>
       <button class="chip" data-status="AKTIF">🟢 Aktif</button>
@@ -776,7 +797,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         Excel hasil ini
       </button>
+      <button class="action-btn" id="toggleBulkModeBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Pilih Banyak
+      </button>
     </div>
+
+    <div id="bulkActionBar" style="display:none;"></div>
 
     <div class="result-count" id="resultCount">0 hasil</div>
     <div id="expiryFilterBanner" style="display:none;"></div>
@@ -885,6 +912,7 @@
     </div>
     <button class="btn-secondary" id="exportBtn">⬇ Ekspor cadangan (JSON)</button>
     <button class="btn-secondary" id="gdriveBackupBtn">☁ Backup ke Google Drive</button>
+    <button class="btn-secondary" id="gdriveRestoreBtn">⬇ Pulihkan dari Google Drive</button>
     <div class="hint" id="gdriveStatus" style="margin-top:6px;"></div>
   </section>
 </main>
@@ -940,7 +968,7 @@ const LOCATIONS = ["BRIMOB MAMUJU","BRIMOB POLMAN","GEDUNG BHAYANGKARI","GEDUNG 
 
 const STORE_KEY = 'sj_records_v1';
 let records = [];
-let state = { search:'', prio:'ALL', loc:'ALL', status:'ALL', expiry:'ALL' };
+let state = { search:'', prio:'ALL', loc:'ALL', status:'ALL', expiry:'ALL', sortBy:'default' };
 
 function loadRecords(){
   const raw = localStorage.getItem(STORE_KEY);
@@ -955,6 +983,151 @@ function saveRecords(){
   localStorage.setItem(STORE_KEY, JSON.stringify(records));
   localStorage.setItem(LAST_UPDATE_KEY, new Date().toISOString());
 }
+
+/* ---------------- AUDIT LOG (RIWAYAT PERUBAHAN) ---------------- */
+const AUDIT_LOG_KEY = 'sj_audit_log_v1';
+function logActivity(action, detail){
+  let log = [];
+  try{ log = JSON.parse(localStorage.getItem(AUDIT_LOG_KEY) || '[]'); }catch(e){}
+  log.unshift({ ts: new Date().toISOString(), action, detail: detail||'' });
+  log = log.slice(0, 200);
+  localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(log));
+}
+function getAuditLog(){
+  try{ return JSON.parse(localStorage.getItem(AUDIT_LOG_KEY) || '[]'); }catch(e){ return []; }
+}
+function clearAuditLog(){
+  localStorage.removeItem(AUDIT_LOG_KEY);
+}
+
+/* ---------------- TEMPAT SAMPAH (SOFT DELETE) ---------------- */
+const TRASH_KEY = 'sj_trash_v1';
+function getTrash(){
+  try{ return JSON.parse(localStorage.getItem(TRASH_KEY) || '[]'); }catch(e){ return []; }
+}
+function saveTrash(trash){
+  localStorage.setItem(TRASH_KEY, JSON.stringify(trash));
+}
+function moveToTrash(record){
+  const trash = getTrash();
+  trash.unshift({ ...record, _deletedAt: new Date().toISOString() });
+  saveTrash(trash.slice(0, 200));
+}
+function restoreFromTrash(trashId){
+  const trash = getTrash();
+  const idx = trash.findIndex(x=>x._id===trashId);
+  if(idx === -1) return;
+  const rec = {...trash[idx]};
+  delete rec._deletedAt;
+  trash.splice(idx,1);
+  saveTrash(trash);
+  records.unshift(rec);
+  saveRecords();
+  logActivity('Pulihkan Data', rec['Nama Ruangan']||'');
+  renderData(); renderDashboard();
+  showToast('Data dipulihkan dari sampah');
+  openTrashManager();
+}
+function permanentlyDeleteTrash(trashId){
+  if(!confirm('Hapus permanen data ini? Tidak bisa dikembalikan lagi.')) return;
+  const trash = getTrash().filter(x=>x._id!==trashId);
+  saveTrash(trash);
+  openTrashManager();
+}
+function emptyTrash(){
+  if(getTrash().length === 0) return;
+  if(!confirm('Kosongkan seluruh sampah? Semua data di dalamnya akan terhapus permanen.')) return;
+  saveTrash([]);
+  logActivity('Kosongkan Sampah', '');
+  openTrashManager();
+}
+function openTrashManager(){
+  const trash = getTrash();
+  const sheet = document.getElementById('modalSheet');
+  sheet.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">Tempat Sampah (${trash.length})</div>
+    <div class="edit-hint">Data yang dihapus disimpan di sini sampai dikosongkan manual.</div>
+    <div>
+      ${trash.length === 0 ? '<div class="empty-state"><div>Sampah kosong.</div></div>' : trash.map(r=>`
+        <div class="loc-manage-row">
+          <div class="loc-manage-name">${r['Nama Ruangan']||'(tanpa nama)'}<small>Dihapus ${fmtTgl(r._deletedAt)}</small></div>
+          <button type="button" onclick="restoreFromTrash('${r._id}')">Pulihkan</button>
+          <button type="button" style="color:var(--danger); border-color:rgba(248,113,113,.3);" onclick="permanentlyDeleteTrash('${r._id}')">Hapus</button>
+        </div>`).join('')}
+    </div>
+    ${trash.length ? '<button type="button" class="btn-secondary" style="color:var(--danger); border-color:rgba(248,113,113,.3);" id="emptyTrashBtn">Kosongkan Semua Sampah</button>' : ''}
+    <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  const emptyBtn = document.getElementById('emptyTrashBtn');
+  if(emptyBtn) emptyBtn.addEventListener('click', emptyTrash);
+}
+function openAuditLog(){
+  const log = getAuditLog();
+  const sheet = document.getElementById('modalSheet');
+  sheet.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">Riwayat Aktivitas</div>
+    <div class="edit-hint">200 aktivitas terakhir pada perangkat ini.</div>
+    <div>
+      ${log.length === 0 ? '<div class="empty-state"><div>Belum ada aktivitas tercatat.</div></div>' : log.map(l=>`
+        <div class="loc-manage-row">
+          <div class="loc-manage-name">${l.action}${l.detail ? ' — '+l.detail : ''}<small>${new Date(l.ts).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</small></div>
+        </div>`).join('')}
+    </div>
+    ${log.length ? '<button type="button" class="btn-secondary" style="color:var(--danger); border-color:rgba(248,113,113,.3);" id="clearLogBtn">Hapus Riwayat</button>' : ''}
+    <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  const clearBtn = document.getElementById('clearLogBtn');
+  if(clearBtn) clearBtn.addEventListener('click', ()=>{ clearAuditLog(); openAuditLog(); });
+}
+
+/* ---------------- NOTIFIKASI KONTRAK AKAN HABIS ---------------- */
+function notifPermGranted(){
+  return typeof Notification !== 'undefined' && Notification.permission === 'granted';
+}
+function requestNotifPermission(){
+  if(typeof Notification === 'undefined'){ showToast('Perangkat/browser ini tidak mendukung notifikasi'); return; }
+  Notification.requestPermission().then(perm=>{
+    if(perm === 'granted'){ showToast('Notifikasi kontrak diaktifkan'); checkContractNotifications(true); }
+    else showToast('Izin notifikasi ditolak');
+    openSettings();
+  });
+}
+const NOTIF_LAST_CHECK_KEY = 'sj_notif_last_check_v1';
+function checkContractNotifications(force){
+  if(!notifPermGranted()) return;
+  const today = new Date().toISOString().slice(0,10);
+  if(!force && localStorage.getItem(NOTIF_LAST_CHECK_KEY) === today) return;
+  localStorage.setItem(NOTIF_LAST_CHECK_KEY, today);
+  const overdue = records.filter(r=>{ const d = daysUntil(r['Tanggal Berakhir Kontrak']); return d !== null && d < 0; }).length;
+  const soon = records.filter(r=>{ const d = daysUntil(r['Tanggal Berakhir Kontrak']); return d !== null && d >= 0 && d <= 30; }).length;
+  if(overdue === 0 && soon === 0) return;
+  try{
+    const parts = [];
+    if(overdue) parts.push(`${overdue} kontrak lewat jatuh tempo`);
+    if(soon) parts.push(`${soon} kontrak akan berakhir ≤30 hari`);
+    new Notification('SIM Jaringan+ — Perhatian Kontrak', { body: parts.join(', '), icon: 'icon-192.png' });
+  }catch(e){}
+}
+
+/* ---------------- BACKUP OTOMATIS TERJADWAL ---------------- */
+const AUTO_BACKUP_KEY = 'sj_auto_backup_interval_v1';
+function autoBackupInterval(){ return localStorage.getItem(AUTO_BACKUP_KEY) || '0'; }
+function checkAutoBackup(){
+  const interval = autoBackupInterval();
+  if(interval === '0') return;
+  if(!gdriveClientId()) return;
+  const last = localStorage.getItem(GDRIVE_LAST_KEY);
+  const thresholdMs = interval === 'weekly' ? 7*24*60*60*1000 : 24*60*60*1000;
+  if(last && (Date.now() - new Date(last).getTime()) < thresholdMs) return;
+  startGdriveBackup();
+}
+
 function renderHeaderUpdated(){
   const el = document.getElementById('headerUpdated');
   if(!el) return;
@@ -1233,10 +1406,46 @@ function openSettings(){
       </div>`}
     </div>
 
+    <div class="settings-section">
+      <h3>Data & Riwayat</h3>
+      <div class="pin-status-row">
+        <span>Riwayat Aktivitas<small>${getAuditLog().length} aktivitas tercatat</small></span>
+        <button type="button" class="btn-secondary" style="width:auto; margin:0; padding:9px 14px;" id="openAuditLogBtn">Lihat</button>
+      </div>
+      <div class="pin-status-row">
+        <span>Tempat Sampah<small>${getTrash().length} data terhapus</small></span>
+        <button type="button" class="btn-secondary" style="width:auto; margin:0; padding:9px 14px;" id="openTrashBtn">Buka</button>
+      </div>
+      <div class="pin-status-row">
+        <span>Peta Semua Lokasi<small>Sudah tersedia di tab Dashboard, bagian "Sebaran Lokasi"</small></span>
+        <button type="button" class="btn-secondary" style="width:auto; margin:0; padding:9px 14px;" id="openAllMapBtn">Buka Dashboard</button>
+      </div>
+      <div class="pin-status-row">
+        <span>Notifikasi Kontrak<small>${notifPermGranted() ? 'Aktif — pengingat kontrak akan habis' : 'Nonaktif, ketuk untuk aktifkan'}</small></span>
+        <button type="button" class="btn-secondary" style="width:auto; margin:0; padding:9px 14px;" id="enableNotifBtn" ${notifPermGranted()?'disabled':''}>${notifPermGranted()?'Aktif':'Aktifkan'}</button>
+      </div>
+      <div class="pin-status-row">
+        <span>Backup Otomatis<small>Backup ke Google Drive terjadwal (butuh Client ID sudah diatur)</small></span>
+        <select class="inline-select" id="autoBackupSelect">
+          <option value="0" ${autoBackupInterval()==='0'?'selected':''}>Nonaktif</option>
+          <option value="daily" ${autoBackupInterval()==='daily'?'selected':''}>Setiap hari</option>
+          <option value="weekly" ${autoBackupInterval()==='weekly'?'selected':''}>Setiap minggu</option>
+        </select>
+      </div>
+    </div>
+
     <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
   `;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  document.getElementById('openAuditLogBtn').addEventListener('click', openAuditLog);
+  document.getElementById('openTrashBtn').addEventListener('click', openTrashManager);
+  document.getElementById('openAllMapBtn').addEventListener('click', ()=>{ closeModal(); document.querySelector('button[data-view="dashboard"]').click(); });
+  document.getElementById('enableNotifBtn').addEventListener('click', requestNotifPermission);
+  document.getElementById('autoBackupSelect').addEventListener('change', (e)=>{
+    localStorage.setItem(AUTO_BACKUP_KEY, e.target.value);
+    showToast('Pengaturan backup otomatis disimpan');
+  });
   sheet.querySelectorAll('[data-theme-choice]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       applyTheme(btn.dataset.themeChoice);
@@ -1763,6 +1972,11 @@ document.getElementById('locFilter').addEventListener('change', e=>{
   state.loc = e.target.value;
   renderData();
 });
+document.getElementById('sortSelect').addEventListener('change', e=>{
+  state.sortBy = e.target.value;
+  renderData();
+});
+document.getElementById('toggleBulkModeBtn').addEventListener('click', toggleBulkMode);
 document.getElementById('statusChips').addEventListener('click', e=>{
   const btn = e.target.closest('.chip');
   if(!btn) return;
@@ -1791,11 +2005,37 @@ function filteredRecords(){
   });
 }
 
+function sortRecords(list){
+  const sortBy = state.sortBy || 'default';
+  const arr = [...list];
+  if(sortBy === 'nama_asc') arr.sort((a,b)=>String(a['Nama Ruangan']||'').localeCompare(String(b['Nama Ruangan']||'')));
+  else if(sortBy === 'nama_desc') arr.sort((a,b)=>String(b['Nama Ruangan']||'').localeCompare(String(a['Nama Ruangan']||'')));
+  else if(sortBy === 'instalasi_desc') arr.sort((a,b)=>String(b['Tanggal Instalasi']||'').localeCompare(String(a['Tanggal Instalasi']||'')));
+  else if(sortBy === 'instalasi_asc') arr.sort((a,b)=>String(a['Tanggal Instalasi']||'').localeCompare(String(b['Tanggal Instalasi']||'')));
+  else if(sortBy === 'kontrak_asc'){
+    arr.sort((a,b)=>{
+      const da = daysUntil(a['Tanggal Berakhir Kontrak']);
+      const db = daysUntil(b['Tanggal Berakhir Kontrak']);
+      if(da === null && db === null) return 0;
+      if(da === null) return 1;
+      if(db === null) return -1;
+      return da - db;
+    });
+  } else {
+    arr.sort((a,b)=>String(b['Terakhir Diupdate']||'').localeCompare(String(a['Terakhir Diupdate']||'')));
+  }
+  return arr;
+}
+
+let bulkMode = false;
+let bulkSelected = new Set();
+
 function renderData(){
   populateLocFilter();
   populatePicDatalist();
   document.getElementById('locFilter').value = state.loc;
-  const list = filteredRecords();
+  document.getElementById('sortSelect').value = state.sortBy || 'default';
+  const list = sortRecords(filteredRecords());
   document.getElementById('resultCount').textContent = `${list.length} hasil dari ${records.length} data`;
   const banner = document.getElementById('expiryFilterBanner');
   if(state.expiry === 'OVERDUE'){
@@ -1810,6 +2050,7 @@ function renderData(){
   }
   const clearBtn = document.getElementById('clearExpiryBtn');
   if(clearBtn) clearBtn.addEventListener('click', () => { state.expiry = 'ALL'; renderData(); });
+  renderBulkBar(list);
   const container = document.getElementById('recordList');
   if(list.length === 0){
     container.innerHTML = `<div class="empty-state">
@@ -1819,7 +2060,8 @@ function renderData(){
     return;
   }
   container.innerHTML = list.map(r=>`
-    <div class="rec-card" style="--acc:${prioColor(r['Prioritas'])}">
+    <div class="rec-card ${bulkMode ? 'bulk-mode' : ''}" style="--acc:${prioColor(r['Prioritas'])}" ${bulkMode ? `onclick="toggleBulkSelect('${r._id}')"` : ''}>
+      ${bulkMode ? `<div class="rec-select-check ${bulkSelected.has(r._id) ? 'checked' : ''}">${bulkSelected.has(r._id) ? '✓' : ''}</div>` : ''}
       <div class="rec-top">
         <div class="rec-name copyable" onclick="copyField('${escJsAttr(r['Nama Ruangan'])}','Nama Ruangan')">${r['Nama Ruangan']||'(tanpa nama)'}</div>
         <div style="display:flex; gap:6px; flex:none; align-items:center;">
@@ -1866,6 +2108,68 @@ function renderData(){
       </div>
     </div>
   `).join('');
+}
+
+/* ---------------- MODE PILIH / BULK ACTIONS ---------------- */
+function toggleBulkMode(){
+  bulkMode = !bulkMode;
+  if(!bulkMode) bulkSelected.clear();
+  const btn = document.getElementById('toggleBulkModeBtn');
+  if(btn) btn.classList.toggle('active-bulk', bulkMode);
+  renderData();
+}
+function toggleBulkSelect(id){
+  if(bulkSelected.has(id)) bulkSelected.delete(id);
+  else bulkSelected.add(id);
+  renderData();
+}
+function renderBulkBar(list){
+  const bar = document.getElementById('bulkActionBar');
+  if(!bulkMode){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'block';
+  const visibleIds = list.map(r=>r._id);
+  const selectedInView = visibleIds.filter(id=>bulkSelected.has(id)).length;
+  bar.innerHTML = `
+    <div class="bulk-bar">
+      <span class="bulk-count">${bulkSelected.size} data dipilih</span>
+      <div class="bulk-actions-inline">
+        <button type="button" id="bulkSelectAllBtn">${selectedInView === visibleIds.length && visibleIds.length>0 ? 'Batal Semua' : 'Pilih Semua'}</button>
+        <button type="button" id="bulkExportBtn">Excel</button>
+        <button type="button" class="danger-btn" id="bulkDeleteBtn">Hapus</button>
+        <button type="button" id="bulkCancelBtn">Selesai</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('bulkSelectAllBtn').addEventListener('click', ()=>{
+    if(selectedInView === visibleIds.length && visibleIds.length>0){ visibleIds.forEach(id=>bulkSelected.delete(id)); }
+    else { visibleIds.forEach(id=>bulkSelected.add(id)); }
+    renderData();
+  });
+  document.getElementById('bulkExportBtn').addEventListener('click', bulkExportSelected);
+  document.getElementById('bulkDeleteBtn').addEventListener('click', bulkDeleteSelected);
+  document.getElementById('bulkCancelBtn').addEventListener('click', toggleBulkMode);
+}
+function bulkExportSelected(){
+  if(bulkSelected.size === 0){ showToast('Belum ada data dipilih'); return; }
+  const list = records.filter(r=>bulkSelected.has(r._id));
+  exportExcel(list, `Data_Jaringan_Terpilih_${new Date().toISOString().slice(0,10)}.xlsx`);
+  logActivity('Export Excel Terpilih', `${list.length} data`);
+}
+function bulkDeleteSelected(){
+  if(bulkSelected.size === 0){ showToast('Belum ada data dipilih'); return; }
+  if(!confirm(`Hapus ${bulkSelected.size} data terpilih? Data akan dipindah ke Tempat Sampah.`)) return;
+  const toDelete = records.filter(r=>bulkSelected.has(r._id));
+  toDelete.forEach(r=>moveToTrash(r));
+  records = records.filter(r=>!bulkSelected.has(r._id));
+  saveRecords();
+  logActivity('Hapus Massal', `${toDelete.length} data`);
+  bulkSelected.clear();
+  bulkMode = false;
+  const btn = document.getElementById('toggleBulkModeBtn');
+  if(btn) btn.classList.remove('active-bulk');
+  renderData();
+  renderDashboard();
+  showToast(`${toDelete.length} data dipindah ke Tempat Sampah`);
 }
 
 /* ---------------- MODAL DETAIL / EDIT ---------------- */
@@ -1971,6 +2275,7 @@ function openDetail(id){
     }
     fields.forEach(f=>{ r[f] = fd.get(f); });
     saveRecords();
+    logActivity('Edit Data', r['Nama Ruangan']||'');
     closeModal();
     renderData();
     showToast('Perubahan disimpan');
@@ -1993,12 +2298,14 @@ document.getElementById('modalOverlay').addEventListener('click', e=>{
 function deleteRecord(id){
   const r = records.find(x=>x._id===id);
   if(!r) return;
-  if(!confirm(`Hapus data "${r['Nama Ruangan']}"?`)) return;
+  if(!confirm(`Hapus data "${r['Nama Ruangan']}"? Data akan dipindah ke Tempat Sampah dan bisa dipulihkan.`)) return;
+  moveToTrash(r);
   records = records.filter(x=>x._id!==id);
   saveRecords();
+  logActivity('Hapus Data', r['Nama Ruangan']||'');
   renderData();
   renderDashboard();
-  showToast('Data dihapus');
+  showToast('Data dipindah ke Tempat Sampah');
 }
 
 /* ---------------- LAPORAN GANGGUAN ---------------- */
@@ -2094,9 +2401,11 @@ function toggleVerified(id){
   if(!r) return;
   if(r['Diverifikasi Pada']){
     r['Diverifikasi Pada'] = '';
+    logActivity('Batal Verifikasi', r['Nama Ruangan']||'');
     showToast('Tanda verifikasi dihapus');
   } else {
     r['Diverifikasi Pada'] = new Date().toISOString();
+    logActivity('Verifikasi Data', r['Nama Ruangan']||'');
     showToast('Data ditandai terverifikasi');
   }
   saveRecords();
@@ -2115,6 +2424,7 @@ function duplicateRecord(id){
   copy['Terakhir Diupdate'] = new Date().toISOString();
   records.unshift(copy);
   saveRecords();
+  logActivity('Duplikat Data', copy['Nama Ruangan']||'');
   renderData();
   showToast('Data diduplikat, silakan lengkapi Customer ID & Serial Number');
   openDetail(copy._id);
@@ -2403,6 +2713,7 @@ document.getElementById('addForm').addEventListener('submit', e=>{
   rec['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
   records.unshift(rec);
   saveRecords();
+  logActivity('Tambah Data', rec['Nama Ruangan']||'');
   e.target.reset();
   showToast('Data baru tersimpan');
   renderDashboard();
@@ -2546,6 +2857,7 @@ function startGdriveBackup(){
       showToast('Mengunggah backup ke Google Drive...');
       await uploadBackupToDrive();
       localStorage.setItem(GDRIVE_LAST_KEY, new Date().toISOString());
+      logActivity('Backup Google Drive', 'Unggah');
       renderGdriveStatus();
       showToast('Backup ke Google Drive berhasil');
     }catch(err){
@@ -2555,9 +2867,46 @@ function startGdriveBackup(){
   });
 }
 
+async function downloadBackupFromDrive(){
+  const fileId = await findExistingBackupFileId();
+  if(!fileId) throw new Error('Belum ada file backup di Drive');
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+  });
+  if(!res.ok) throw new Error('Gagal mengunduh file dari Drive');
+  const data = await res.json();
+  if(!Array.isArray(data)) throw new Error('Format file backup tidak dikenali');
+  return data;
+}
+
+function startGdriveRestore(){
+  if(!confirm('Memulihkan dari Google Drive akan MENIMPA seluruh data Data Jaringan di perangkat ini dengan data dari Drive. Lanjutkan?')) return;
+  requestGdriveToken(async ()=>{
+    try{
+      showToast('Mengunduh backup dari Google Drive...');
+      const incoming = await downloadBackupFromDrive();
+      records = incoming.map(r => ({ ...r, _id: r._id || ('restored_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)) }));
+      saveRecords();
+      localStorage.setItem(GDRIVE_LAST_KEY, new Date().toISOString());
+      logActivity('Pulihkan Google Drive', `${records.length} data`);
+      renderGdriveStatus();
+      renderDashboard();
+      renderData();
+      showToast(`Berhasil memulihkan ${records.length} data dari Google Drive`);
+    }catch(err){
+      console.error(err);
+      showToast(err.message || 'Gagal memulihkan dari Google Drive');
+    }
+  });
+}
+
 document.getElementById('gdriveBackupBtn').addEventListener('click', startGdriveBackup);
+document.getElementById('gdriveRestoreBtn').addEventListener('click', startGdriveRestore);
 renderGdriveStatus();
 window.hubDriveUpload = startGdriveBackup;
+window.hubDriveDownload = startGdriveRestore;
+setTimeout(checkAutoBackup, 3000);
+setTimeout(()=>checkContractNotifications(false), 4000);
 
 /* ---------------- PRINT REPORT ---------------- */
 const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
@@ -2685,6 +3034,7 @@ document.getElementById('importExcelInput').addEventListener('change', e=>{
       });
 
       saveRecords();
+      logActivity('Impor Excel', `${added} baru, ${updated} diperbarui`);
       renderDashboard();
       renderData();
       showToast(`Impor selesai: ${added} data baru, ${updated} diperbarui${skipped?`, ${skipped} dilewati`:''}`);
