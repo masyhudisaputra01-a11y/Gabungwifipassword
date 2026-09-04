@@ -28,6 +28,8 @@
 <meta name="apple-mobile-web-app-title" content="Data Inet">
 <script src="xlsx.full.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700;8..60,800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -985,11 +987,14 @@ function saveRecords(){
 }
 
 /* ---------------- AUDIT LOG (RIWAYAT PERUBAHAN) ---------------- */
+const USERNAME_KEY = 'sj_username_v1';
+function getUsername(){ return localStorage.getItem(USERNAME_KEY) || 'Pengguna'; }
+function setUsername(name){ localStorage.setItem(USERNAME_KEY, (name||'').trim() || 'Pengguna'); }
 const AUDIT_LOG_KEY = 'sj_audit_log_v1';
 function logActivity(action, detail){
   let log = [];
   try{ log = JSON.parse(localStorage.getItem(AUDIT_LOG_KEY) || '[]'); }catch(e){}
-  log.unshift({ ts: new Date().toISOString(), action, detail: detail||'' });
+  log.unshift({ ts: new Date().toISOString(), user: getUsername(), action, detail: detail||'' });
   log = log.slice(0, 200);
   localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(log));
 }
@@ -1074,7 +1079,7 @@ function openAuditLog(){
     <div>
       ${log.length === 0 ? '<div class="empty-state"><div>Belum ada aktivitas tercatat.</div></div>' : log.map(l=>`
         <div class="loc-manage-row">
-          <div class="loc-manage-name">${l.action}${l.detail ? ' — '+l.detail : ''}<small>${new Date(l.ts).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</small></div>
+          <div class="loc-manage-name">${l.action}${l.detail ? ' — '+l.detail : ''}<small>oleh ${l.user||'Pengguna'} · ${new Date(l.ts).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</small></div>
         </div>`).join('')}
     </div>
     ${log.length ? '<button type="button" class="btn-secondary" style="color:var(--danger); border-color:rgba(248,113,113,.3);" id="clearLogBtn">Hapus Riwayat</button>' : ''}
@@ -1347,6 +1352,14 @@ function openSettings(){
     <div class="modal-title">Pengaturan</div>
 
     <div class="settings-section">
+      <h3>Identitas Pengguna</h3>
+      <div class="pin-status-row">
+        <span>Nama Pengguna<small>Dicatat di riwayat aktivitas &amp; data yang kamu ubah</small></span>
+        <input type="text" id="usernameInput" value="${(getUsername()||'').replace(/"/g,'&quot;')}" style="width:120px; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:7px 9px; color:var(--ink); font-size:12.5px;">
+      </div>
+    </div>
+
+    <div class="settings-section">
       <h3>Tema Tampilan</h3>
       <div class="theme-toggle">
         <button type="button" data-theme-choice="dark" class="${theme==='dark'?'active':''}">
@@ -1439,6 +1452,7 @@ function openSettings(){
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
   document.getElementById('openAuditLogBtn').addEventListener('click', openAuditLog);
+  document.getElementById('usernameInput').addEventListener('change', (e)=>{ setUsername(e.target.value); showToast('Nama pengguna disimpan'); });
   document.getElementById('openTrashBtn').addEventListener('click', openTrashManager);
   document.getElementById('openAllMapBtn').addEventListener('click', ()=>{ closeModal(); document.querySelector('button[data-view="dashboard"]').click(); });
   document.getElementById('enableNotifBtn').addEventListener('click', requestNotifPermission);
@@ -2087,6 +2101,7 @@ function renderData(){
         <div class="dd full">Password WiFi<b>${r['Password WiFi'] ? '••••••••' : '-'}</b></div>
         <div class="dd full">Terakhir Diupdate<b>${fmtTgl(r['Terakhir Diupdate'])}</b></div>
         <div class="dd full">Verifikasi Terakhir<b>${r['Diverifikasi Pada'] ? ('✓ ' + fmtTgl(r['Diverifikasi Pada'])) : 'Belum diverifikasi'}</b></div>
+        <div class="dd full">Ditambahkan / Diubah Oleh<b>${r['Ditambahkan Oleh'] ? ('Dibuat: '+r['Ditambahkan Oleh']) : ''}${r['Diubah Oleh'] && r['Diubah Oleh'] !== r['Ditambahkan Oleh'] ? (r['Ditambahkan Oleh'] ? ' · ' : '') + 'Diubah: '+r['Diubah Oleh'] : ''}${!r['Ditambahkan Oleh'] && !r['Diubah Oleh'] ? '-' : ''}</b></div>
       </div>
       <div class="rec-actions">
         <button class="${r['Diverifikasi Pada'] ? 'verified' : 'verify'}" onclick="toggleVerified('${r._id}')">${r['Diverifikasi Pada'] ? '✓ Terverifikasi' : '☐ Tandai Terverifikasi'}</button>
@@ -2274,6 +2289,8 @@ function openDetail(id){
       }
     }
     fields.forEach(f=>{ r[f] = fd.get(f); });
+    r['Diubah Oleh'] = getUsername();
+    r['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
     saveRecords();
     logActivity('Edit Data', r['Nama Ruangan']||'');
     closeModal();
@@ -2422,6 +2439,9 @@ function duplicateRecord(id){
   copy['Password WiFi'] = '';
   copy['Nama Ruangan'] = (copy['Nama Ruangan']||'') + ' (Salinan)';
   copy['Terakhir Diupdate'] = new Date().toISOString();
+  copy['Ditambahkan Oleh'] = getUsername();
+  copy['Diubah Oleh'] = getUsername();
+  copy['Diverifikasi Pada'] = '';
   records.unshift(copy);
   saveRecords();
   logActivity('Duplikat Data', copy['Nama Ruangan']||'');
@@ -2659,6 +2679,7 @@ function showReportResult(data){
       <button type="button" class="btn-tg" id="sendTgBtn">✈️ Kirim via Telegram</button>
       <button type="button" class="btn-secondary" id="copyReportBtn">⧉ Salin Teks</button>
       <button type="button" class="btn-secondary" id="printReportBtn">🖨 Cetak</button>
+      <button type="button" class="btn-secondary" id="pdfReportBtn">📄 Simpan sebagai PDF</button>
       <button type="button" class="btn-secondary" id="closeReportResultBtn">Tutup</button>
     </div>
   `;
@@ -2681,6 +2702,9 @@ function showReportResult(data){
   document.getElementById('printReportBtn').addEventListener('click', ()=>{
     doPrintReport(data, text);
   });
+  document.getElementById('pdfReportBtn').addEventListener('click', ()=>{
+    downloadReportAsPdf(data);
+  });
   document.getElementById('closeReportResultBtn').addEventListener('click', closeModal);
 }
 
@@ -2700,6 +2724,62 @@ function doPrintReport(data, text){
     <tr><td colspan="2" style="font-weight:700;">${k}</td><td colspan="10">${String(v).replace(/</g,'&lt;')}</td></tr>`).join('');
   document.getElementById('printFoot').textContent = 'Data Inet Polda Sulbar — laporan gangguan dicetak dari aplikasi internal.';
   setTimeout(()=>window.print(), 80);
+}
+
+async function downloadReportAsPdf(data){
+  if(typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined'){
+    showToast('Modul PDF belum siap (perlu koneksi internet), coba lagi sesaat lagi');
+    return;
+  }
+  showToast('Menyiapkan PDF...');
+  const printArea = document.getElementById('printArea');
+  document.getElementById('printSubtitle').textContent = 'Laporan Gangguan Jaringan';
+  document.getElementById('printDate').textContent = 'Dicetak: ' + new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  const rows = [
+    ['Nama Ruangan', data.namaRuangan],
+    ['Customer ID', data.customerId],
+    ['Serial Number', data.serialNumber],
+    ['Bandwidth', data.bandwidth],
+    ['Lokasi', data.lokasi],
+    ['Keluhan', data.keluhan],
+    ['PIC', data.pic]
+  ];
+  document.getElementById('printTableBody').innerHTML = rows.map(([k,v])=>`
+    <tr><td colspan="2" style="font-weight:700;">${k}</td><td colspan="10">${String(v||'-').replace(/</g,'&lt;')}</td></tr>`).join('');
+  document.getElementById('printFoot').textContent = 'Data Inet Polda Sulbar — laporan gangguan dibuat dari aplikasi internal.';
+
+  const prevStyle = printArea.getAttribute('style') || '';
+  printArea.style.cssText = 'display:block; position:fixed; left:-9999px; top:0; width:780px; padding:24px; background:#fff; z-index:-1;';
+
+  try{
+    const canvas = await html2canvas(printArea, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 10;
+    pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+    heightLeft -= (pageHeight - 20);
+    while(heightLeft > 0){
+      position = heightLeft - imgHeight + 10;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+      heightLeft -= (pageHeight - 20);
+    }
+    const filename = `Laporan_Gangguan_${(data.namaRuangan||'data').replace(/[^a-zA-Z0-9]+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+    pdf.save(filename);
+    logActivity('Simpan PDF Laporan', data.namaRuangan||'');
+    showToast('PDF laporan berhasil diunduh');
+  }catch(err){
+    console.error(err);
+    showToast('Gagal membuat PDF. Coba lagi atau gunakan opsi Cetak.');
+  }finally{
+    printArea.setAttribute('style', prevStyle);
+  }
 }
 
 /* ---------------- ADD FORM ---------------- */
@@ -2738,6 +2818,8 @@ document.getElementById('addForm').addEventListener('submit', e=>{
   const rec = { _id: 'r_'+Date.now() };
   fd.forEach((v,k)=>{ rec[k]=v; });
   rec['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
+  rec['Ditambahkan Oleh'] = getUsername();
+  rec['Diubah Oleh'] = getUsername();
   records.unshift(rec);
   saveRecords();
   logActivity('Tambah Data', rec['Nama Ruangan']||'');

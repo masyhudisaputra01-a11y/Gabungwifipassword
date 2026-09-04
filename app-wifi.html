@@ -614,6 +614,7 @@ function wifiCardHtml(r){
       <button class="icon-btn act-copy" title="Salin password" ${isStaff?'disabled':''}>${ICON_COPY}</button>
     </div>
     ${r.catatan ? `<div class="wc-note">${escapeHtml(r.catatan)}</div>` : ''}
+    ${r.updatedBy ? `<div class="wc-note" style="opacity:.7; font-size:10.5px;">Diperbarui oleh ${escapeHtml(r.updatedBy)}${r.updatedAt ? ' · '+new Date(r.updatedAt).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : ''}</div>` : ''}
     ${!isStaff ? `
     <div class="wc-toolbar">
       <button class="icon-btn act-pin ${r.pinned?'on':''}" title="Favorit">${ICON_STAR(!!r.pinned)}</button>
@@ -1271,7 +1272,7 @@ function renderSettings(){
 
     <div class="section-title">Log Aktivitas</div>
     <div class="card">
-      ${log.length ? log.map(l => `<div class="log-item"><span><b>${escapeHtml(l.action)}</b> ${l.detail?('· '+escapeHtml(l.detail)):''}</span><span>${new Date(l.ts).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div>`).join('') : '<div class="helptext">Belum ada aktivitas tercatat.</div>'}
+      ${log.length ? log.map(l => `<div class="log-item"><span><b>${escapeHtml(l.action)}</b> ${l.detail?('· '+escapeHtml(l.detail)):''}<br><small style="color:var(--ink-faint);">oleh ${escapeHtml(l.user||'Pengguna')}</small></span><span>${new Date(l.ts).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div>`).join('') : '<div class="helptext">Belum ada aktivitas tercatat.</div>'}
     </div>
 
     <div class="section-title">Lainnya</div>
