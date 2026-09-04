@@ -780,7 +780,7 @@ function doGlobalSearch(q, fromHistoryClick){
   try{ wRecords = JSON.parse(localStorage.getItem('wv_records_v1') || '[]'); }catch(e){}
 
   const jMatches = jRecords.filter(r => {
-    const hay = [r['Nama Ruangan'], r['Customer ID'], r['Serial Number'], r['Lokasi'], r['Jenis Paket'], r['Nama Jaringan']].map(v=>String(v||'').toLowerCase()).join(' | ');
+    const hay = [r['Nama Ruangan'], r['Customer ID'], r['Serial Number'], r['Lokasi'], r['ODP'], r['Jenis Paket'], r['Nama Jaringan']].map(v=>String(v||'').toLowerCase()).join(' | ');
     return hay.includes(q);
   }).slice(0, 20);
   const wMatches = wRecords.filter(r => {

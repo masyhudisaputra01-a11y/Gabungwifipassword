@@ -863,6 +863,11 @@
           <select name="Lokasi" id="lokasiSelect" required></select>
         </div>
         <div class="field">
+          <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v16M16 4v16M4 8h16M4 16h16"/></svg>ODP <span class="hint">opsional</span></label>
+          <input type="text" name="ODP" placeholder="cth. ODP-SBR-05" list="odpDatalist">
+        </div>
+        <datalist id="odpDatalist"></datalist>
+        <div class="field">
           <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>Jenis Paket</label>
           <input type="text" name="Jenis Paket" placeholder="cth. INET ONLY">
         </div>
@@ -955,7 +960,7 @@
     <thead>
       <tr>
         <th>No</th><th>Prioritas</th><th>Nama Ruangan</th><th>Customer ID</th><th>Serial Number</th>
-        <th>Bandwidth</th><th>Status</th><th>Lokasi</th><th>Jenis Paket</th><th>Tgl Instalasi</th><th>Tgl Berakhir</th><th>PIC/Teknisi</th><th>Nama Jaringan</th><th>Password WiFi</th>
+        <th>Bandwidth</th><th>Status</th><th>Lokasi</th><th>ODP</th><th>Jenis Paket</th><th>Tgl Instalasi</th><th>Tgl Berakhir</th><th>PIC/Teknisi</th><th>Nama Jaringan</th><th>Password WiFi</th>
       </tr>
     </thead>
     <tbody id="printTableBody"></tbody>
@@ -1969,6 +1974,12 @@ function populatePicDatalist(){
   const uniq = [...new Set(records.map(r=>r['PIC/Teknisi']).filter(Boolean))].sort();
   dl.innerHTML = uniq.map(p=>`<option value="${esc(p)}">`).join('');
 }
+function populateOdpDatalist(){
+  const dl = document.getElementById('odpDatalist');
+  if(!dl) return;
+  const uniq = [...new Set(records.map(r=>r['ODP']).filter(Boolean))].sort();
+  dl.innerHTML = uniq.map(p=>`<option value="${esc(p)}">`).join('');
+}
 
 document.getElementById('searchInput').addEventListener('input', e=>{
   state.search = e.target.value.trim().toLowerCase();
@@ -2011,7 +2022,7 @@ function filteredRecords(){
       if(state.expiry === 'SOON30' && !(d !== null && d >= 0 && d <= 30)) return false;
     }
     if(state.search){
-      const hay = [r['Nama Ruangan'], r['Customer ID'], r['Serial Number'], r['Lokasi'], r['Jenis Paket'], r['Nama Jaringan']]
+      const hay = [r['Nama Ruangan'], r['Customer ID'], r['Serial Number'], r['Lokasi'], r['ODP'], r['Jenis Paket'], r['Nama Jaringan']]
         .map(v=>String(v||'').toLowerCase()).join(' | ');
       if(!hay.includes(state.search)) return false;
     }
@@ -2047,6 +2058,7 @@ let bulkSelected = new Set();
 function renderData(){
   populateLocFilter();
   populatePicDatalist();
+  populateOdpDatalist();
   document.getElementById('locFilter').value = state.loc;
   document.getElementById('sortSelect').value = state.sortBy || 'default';
   const list = sortRecords(filteredRecords());
@@ -2084,9 +2096,10 @@ function renderData(){
         </div>
       </div>
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:4px;">
-        <div class="rec-loc" style="margin-top:0;">📍 ${r['Lokasi']||'-'}</div>
+        <div class="rec-loc copyable" style="margin-top:0;" onclick="copyField('${escJsAttr(r['Lokasi'])}','Lokasi')">📍 ${r['Lokasi']||'-'}</div>
         ${statusBadge(r)}
       </div>
+      ${r['ODP'] ? `<div class="rec-loc copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">🔌 ODP: ${r['ODP']}</div>` : ''}
       <div class="rec-meta">
         <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${r['Customer ID']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
         <span class="copyable" onclick="copyField('${escJsAttr(r['Serial Number'])}','Serial Number')">SN: <b>${r['Serial Number']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
@@ -2191,7 +2204,7 @@ function bulkDeleteSelected(){
 function openDetail(id){
   const r = records.find(x=>x._id===id);
   if(!r) return;
-  const fields = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+  const fields = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
   const incidents = getIncidentsFor(id);
   const sheet = document.getElementById('modalSheet');
   sheet.innerHTML = `
@@ -2239,7 +2252,7 @@ function openDetail(id){
         return `
         <div class="field">
           <label>${f}</label>
-          <input type="text" name="${f}" value="${r[f]!=null? String(r[f]).replace(/"/g,'&quot;'):''}" ${f==='PIC/Teknisi' ? 'list="picDatalist"' : ''}>
+          <input type="text" name="${f}" value="${r[f]!=null? String(r[f]).replace(/"/g,'&quot;'):''}" ${f==='PIC/Teknisi' ? 'list="picDatalist"' : ''} ${f==='ODP' ? 'list="odpDatalist"' : ''}>
         </div>`;
       }).join('')}
       <button type="submit" class="btn-primary">Simpan Perubahan</button>
@@ -2374,6 +2387,7 @@ function buildRecordSummaryText(r){
   const lines = [
     r['Nama Ruangan'] || '(tanpa nama)',
     `Lokasi: ${r['Lokasi']||'-'}`,
+    `ODP: ${r['ODP']||'-'}`,
     `Customer ID: ${r['Customer ID']||'-'}`,
     `Serial Number: ${r['Serial Number']||'-'}`,
     `Bandwidth: ${r['Bandwidth']||'-'}`,
@@ -3018,7 +3032,7 @@ setTimeout(checkAutoBackup, 3000);
 setTimeout(()=>checkContractNotifications(false), 4000);
 
 /* ---------------- PRINT REPORT ---------------- */
-const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
 
 function buildPrintTable(list, subtitle, includePass){
   document.getElementById('printSubtitle').textContent = subtitle + ` (${list.length} data)`;
@@ -3033,6 +3047,7 @@ function buildPrintTable(list, subtitle, includePass){
       <td>${r['Bandwidth']||''}</td>
       <td>${r['Status Kontrak']||''}</td>
       <td>${r['Lokasi']||''}</td>
+      <td>${r['ODP']||''}</td>
       <td>${r['Jenis Paket']||''}</td>
       <td>${r['Tanggal Instalasi']||''}</td>
       <td>${r['Tanggal Berakhir Kontrak']||''}</td>
@@ -3080,6 +3095,7 @@ function exportExcel(list, filename){
     'Bandwidth': r['Bandwidth']||'',
     'Status Kontrak': r['Status Kontrak']||'',
     'Lokasi': r['Lokasi']||'',
+    'ODP': r['ODP']||'',
     'Jenis Paket': r['Jenis Paket']||'',
     'Tanggal Instalasi': r['Tanggal Instalasi']||'',
     'Tanggal Berakhir Kontrak': r['Tanggal Berakhir Kontrak']||'',
@@ -3107,7 +3123,7 @@ document.getElementById('excelAllBtn').addEventListener('click', ()=>{
 });
 
 /* ---------------- IMPOR EXCEL MASSAL ---------------- */
-const IMPORT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+const IMPORT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
 document.getElementById('importExcelBtn').addEventListener('click', ()=>{
   document.getElementById('importExcelInput').click();
 });
