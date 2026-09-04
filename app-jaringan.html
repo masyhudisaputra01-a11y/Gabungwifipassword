@@ -775,6 +775,7 @@
       <button class="chip" data-prio="PRIORITAS 3">Prioritas 3</button>
     </div>
     <select class="loc-filter" id="locFilter"><option value="ALL">Semua Lokasi</option></select>
+    <select class="loc-filter" id="odpFilter" style="margin-top:6px;"><option value="ALL">Semua ODP</option></select>
     <select class="loc-filter" id="sortSelect" style="margin-top:6px;">
       <option value="default">Urutkan: Terbaru Diubah</option>
       <option value="nama_asc">Nama Ruangan (A-Z)</option>
@@ -975,7 +976,7 @@ const LOCATIONS = ["BRIMOB MAMUJU","BRIMOB POLMAN","GEDUNG BHAYANGKARI","GEDUNG 
 
 const STORE_KEY = 'sj_records_v1';
 let records = [];
-let state = { search:'', prio:'ALL', loc:'ALL', status:'ALL', expiry:'ALL', sortBy:'default' };
+let state = { search:'', prio:'ALL', loc:'ALL', odp:'ALL', status:'ALL', expiry:'ALL', sortBy:'default' };
 
 function loadRecords(){
   const raw = localStorage.getItem(STORE_KEY);
@@ -1968,6 +1969,12 @@ function populateLocFilter(){
   const uniq = [...new Set(records.map(r=>r['Lokasi']).filter(Boolean))].sort();
   sel.innerHTML = '<option value="ALL">Semua Lokasi</option>' + uniq.map(l=>`<option value="${l}">${l}</option>`).join('');
 }
+function populateOdpFilter(){
+  const sel = document.getElementById('odpFilter');
+  if(!sel) return;
+  const uniq = [...new Set(records.map(r=>r['ODP']).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="ALL">Semua ODP</option>' + uniq.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
 function populatePicDatalist(){
   const dl = document.getElementById('picDatalist');
   if(!dl) return;
@@ -1997,6 +2004,10 @@ document.getElementById('locFilter').addEventListener('change', e=>{
   state.loc = e.target.value;
   renderData();
 });
+document.getElementById('odpFilter').addEventListener('change', e=>{
+  state.odp = e.target.value;
+  renderData();
+});
 document.getElementById('sortSelect').addEventListener('change', e=>{
   state.sortBy = e.target.value;
   renderData();
@@ -2015,6 +2026,7 @@ function filteredRecords(){
   return records.filter(r=>{
     if(state.prio !== 'ALL' && r['Prioritas'] !== state.prio) return false;
     if(state.loc !== 'ALL' && r['Lokasi'] !== state.loc) return false;
+    if(state.odp !== 'ALL' && r['ODP'] !== state.odp) return false;
     if(state.status !== 'ALL' && String(r['Status Kontrak']||'').toUpperCase() !== state.status) return false;
     if(state.expiry !== 'ALL'){
       const d = daysUntil(r['Tanggal Berakhir Kontrak']);
@@ -2057,9 +2069,11 @@ let bulkSelected = new Set();
 
 function renderData(){
   populateLocFilter();
+  populateOdpFilter();
   populatePicDatalist();
   populateOdpDatalist();
   document.getElementById('locFilter').value = state.loc;
+  document.getElementById('odpFilter').value = state.odp;
   document.getElementById('sortSelect').value = state.sortBy || 'default';
   const list = sortRecords(filteredRecords());
   document.getElementById('resultCount').textContent = `${list.length} hasil dari ${records.length} data`;
