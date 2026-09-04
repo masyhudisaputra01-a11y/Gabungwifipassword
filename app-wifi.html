@@ -706,9 +706,9 @@ function parseWifiQrString(raw){
   return out.ssid ? out : null;
 }
 async function openWifiQrScanner(){
-  if(!('BarcodeDetector' in window)){
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ showToast('Perangkat/browser ini tidak mendukung scan QR'); return; }
-  }
+  const hasDetector = 'BarcodeDetector' in window;
+  const hasCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  if(!hasDetector){ showToast('Perangkat/browser ini tidak mendukung baca QR'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
   overlay.id = 'wvScannerOverlay';
@@ -716,12 +716,15 @@ async function openWifiQrScanner(){
     <div class="modal-sheet" style="max-width:480px;">
       <div class="close-x" id="wvScannerCloseX">✕</div>
       <div class="modal-title">Scan QR WiFi</div>
-      <div style="font-size:12px; color:var(--ink-soft); text-align:center; margin-bottom:10px;" id="wvScannerHint">Arahkan kamera ke stiker QR WiFi di router</div>
+      <div style="font-size:12px; color:var(--ink-soft); text-align:center; margin-bottom:10px;" id="wvScannerHint">${hasCamera ? 'Arahkan kamera ke stiker QR WiFi di router' : 'Pilih foto QR WiFi dari galeri'}</div>
+      ${hasCamera ? `
       <div class="scanner-wrap-wifi">
         <video id="wvScannerVideo" autoplay playsinline muted style="width:100%; border-radius:12px; background:#000; max-height:50vh; object-fit:cover;"></video>
         <div class="scanner-frame-wifi"></div>
-      </div>
-      <button type="button" class="btn-secondary" id="wvScannerCancelBtn" style="width:100%;">Batal</button>
+      </div>` : ''}
+      <button type="button" class="btn-secondary" id="wvScannerGalleryBtn" style="width:100%;">🖼️ Pilih Foto dari Galeri</button>
+      <input type="file" id="wvScannerFileInput" accept="image/*" style="display:none;">
+      <button type="button" class="btn-secondary" id="wvScannerCancelBtn" style="width:100%; margin-top:8px;">Batal</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -730,20 +733,26 @@ async function openWifiQrScanner(){
   overlay.querySelector('#wvScannerCancelBtn').addEventListener('click', close);
   overlay.addEventListener('click', (e)=>{ if(e.target === overlay) close(); });
 
+  const fileInput = overlay.querySelector('#wvScannerFileInput');
+  overlay.querySelector('#wvScannerGalleryBtn').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    await scanWifiQrFromFile(file);
+  });
+
+  if(!hasCamera) return;
+
   try{
     _wvScannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
   }catch(e){
-    document.getElementById('wvScannerHint').textContent = 'Tidak bisa mengakses kamera. Pastikan izin kamera diizinkan.';
+    document.getElementById('wvScannerHint').textContent = 'Tidak bisa mengakses kamera. Gunakan opsi pilih foto dari galeri.';
     return;
   }
   const video = document.getElementById('wvScannerVideo');
   if(!video){ _wvScannerStream.getTracks().forEach(t=>t.stop()); return; }
   video.srcObject = _wvScannerStream;
 
-  if(!('BarcodeDetector' in window)){
-    document.getElementById('wvScannerHint').textContent = 'Deteksi otomatis tidak didukung browser ini.';
-    return;
-  }
   let detector;
   try{ detector = new BarcodeDetector({ formats:['qr_code'] }); }catch(e){ detector = new BarcodeDetector(); }
 
@@ -765,6 +774,31 @@ async function openWifiQrScanner(){
     _wvScannerRAF = requestAnimationFrame(loop);
   };
   _wvScannerRAF = requestAnimationFrame(loop);
+}
+async function scanWifiQrFromFile(file){
+  const hint = document.getElementById('wvScannerHint');
+  if(hint) hint.textContent = 'Membaca foto...';
+  try{
+    let detector;
+    try{ detector = new BarcodeDetector({ formats:['qr_code'] }); }catch(e){ detector = new BarcodeDetector(); }
+    const bitmap = await createImageBitmap(file);
+    const codes = await detector.detect(bitmap);
+    if(!codes || codes.length === 0){
+      if(hint) hint.textContent = 'QR tidak terdeteksi di foto ini. Coba foto lain yang lebih jelas.';
+      return;
+    }
+    const raw = (codes[0].rawValue||'').trim();
+    const parsed = parseWifiQrString(raw);
+    if(!parsed){
+      if(hint) hint.textContent = 'QR ditemukan, tapi bukan format QR WiFi.';
+      return;
+    }
+    showToast('QR WiFi terdeteksi: ' + parsed.ssid);
+    closeWifiQrScanner();
+    openFormModal(null, parsed);
+  }catch(e){
+    if(hint) hint.textContent = 'Gagal membaca foto. Coba foto lain.';
+  }
 }
 function closeWifiQrScanner(){
   if(_wvScannerRAF) cancelAnimationFrame(_wvScannerRAF);
@@ -959,7 +993,19 @@ function openFormModal(rec, prefillData){
   });
   if(editing){ overlay.querySelector('#f_deleteBtn').addEventListener('click', () => { closeModal(overlay); confirmDelete(rec); }); }
 }
-document.getElementById('fabAdd').addEventListener('click', () => openFormModal(null));
+document.getElementById('fabAdd').addEventListener('click', openAddChoiceModal);
+function openAddChoiceModal(){
+  const overlay = openModal(`
+    <div class="modal-title">Tambah WiFi</div>
+    <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:14px;">Scan QR di stiker router untuk isi otomatis, atau isi manual.</div>
+    <button class="btn-primary" id="choiceScanBtn">📷 Scan QR WiFi</button>
+    <button class="btn-secondary" id="choiceManualBtn" style="margin-top:8px;">✏️ Isi Manual</button>
+    <button class="btn-secondary" id="choiceCancelBtn" style="margin-top:8px;">Batal</button>
+  `, {centered:true});
+  overlay.querySelector('#choiceScanBtn').addEventListener('click', () => { closeModal(overlay); openWifiQrScanner(); });
+  overlay.querySelector('#choiceManualBtn').addEventListener('click', () => { closeModal(overlay); openFormModal(null); });
+  overlay.querySelector('#choiceCancelBtn').addEventListener('click', () => closeModal(overlay));
+}
 
 function openHistoryModal(rec){
   const overlay = openModal(`

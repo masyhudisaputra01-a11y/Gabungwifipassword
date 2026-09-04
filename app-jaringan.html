@@ -2438,12 +2438,9 @@ let _scannerTargetId = null;
 async function openBarcodeScanner(targetInputId){
   _scannerTargetId = targetInputId;
 
-  if(!('BarcodeDetector' in window)){
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      showToast('Perangkat/browser ini tidak mendukung scan barcode');
-      return;
-    }
-  }
+  const hasDetector = 'BarcodeDetector' in window;
+  const hasCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  if(!hasDetector){ showToast('Perangkat/browser ini tidak mendukung baca barcode/QR'); return; }
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay show';
@@ -2452,11 +2449,14 @@ async function openBarcodeScanner(targetInputId){
     <div class="modal-sheet" style="max-width:480px;">
       <div class="modal-handle"></div>
       <div class="modal-title">Scan Barcode / QR Serial Number</div>
-      <div class="scanner-hint" id="scannerHint">Arahkan kamera ke barcode/QR pada perangkat</div>
+      <div class="scanner-hint" id="scannerHint">${hasCamera ? 'Arahkan kamera ke barcode/QR pada perangkat' : 'Pilih foto barcode/QR dari galeri'}</div>
+      ${hasCamera ? `
       <div class="scanner-wrap">
         <video id="scannerVideo" autoplay playsinline muted></video>
         <div class="scanner-frame"></div>
-      </div>
+      </div>` : ''}
+      <button type="button" class="btn-secondary" id="scannerGalleryBtn" style="width:100%; margin-bottom:8px;">🖼️ Pilih Foto dari Galeri</button>
+      <input type="file" id="scannerFileInput" accept="image/*" style="display:none;">
       <button type="button" class="btn-secondary" id="scannerManualBtn" style="width:100%; margin-bottom:8px;">✏️ Ketik Manual Saja</button>
       <button type="button" class="btn-secondary" id="scannerCloseBtn" style="width:100%;">Batal</button>
     </div>
@@ -2467,20 +2467,25 @@ async function openBarcodeScanner(targetInputId){
   document.getElementById('scannerManualBtn').addEventListener('click', closeBarcodeScanner);
   overlay.addEventListener('click', (e) => { if(e.target === overlay) closeBarcodeScanner(); });
 
+  const fileInput = document.getElementById('scannerFileInput');
+  document.getElementById('scannerGalleryBtn').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    await scanBarcodeFromFile(file);
+  });
+
+  if(!hasCamera) return;
+
   try{
     _scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
   }catch(e){
-    document.getElementById('scannerHint').textContent = 'Tidak bisa mengakses kamera. Pastikan izin kamera diizinkan.';
+    document.getElementById('scannerHint').textContent = 'Tidak bisa mengakses kamera. Gunakan opsi pilih foto dari galeri.';
     return;
   }
   const video = document.getElementById('scannerVideo');
   if(!video) { _scannerStream.getTracks().forEach(t=>t.stop()); return; }
   video.srcObject = _scannerStream;
-
-  if(!('BarcodeDetector' in window)){
-    document.getElementById('scannerHint').textContent = 'Deteksi otomatis tidak didukung browser ini — ketik manual saja.';
-    return;
-  }
 
   let detector;
   try{
@@ -2507,6 +2512,28 @@ async function openBarcodeScanner(targetInputId){
     _scannerRAF = requestAnimationFrame(scanLoop);
   };
   _scannerRAF = requestAnimationFrame(scanLoop);
+}
+async function scanBarcodeFromFile(file){
+  const hint = document.getElementById('scannerHint');
+  if(hint) hint.textContent = 'Membaca foto...';
+  try{
+    let detector;
+    try{ detector = new BarcodeDetector({ formats: ['qr_code','code_128','code_39','ean_13','ean_8','upc_a','upc_e','codabar','data_matrix'] }); }
+    catch(e){ detector = new BarcodeDetector(); }
+    const bitmap = await createImageBitmap(file);
+    const codes = await detector.detect(bitmap);
+    if(!codes || codes.length === 0){
+      if(hint) hint.textContent = 'Barcode/QR tidak terdeteksi di foto ini. Coba foto lain yang lebih jelas.';
+      return;
+    }
+    const value = (codes[0].rawValue || '').trim();
+    const input = document.getElementById(_scannerTargetId);
+    if(input){ input.value = value; input.dispatchEvent(new Event('input', {bubbles:true})); }
+    showToast('Kode terdeteksi: ' + value);
+    closeBarcodeScanner();
+  }catch(e){
+    if(hint) hint.textContent = 'Gagal membaca foto. Coba foto lain.';
+  }
 }
 
 function closeBarcodeScanner(){
