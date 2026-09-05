@@ -48,9 +48,9 @@
   }
   html[data-theme="light"]{
     --navy-950:#071427; --navy-900:#0B1F3A; --navy-800:#142A4D;
-    --paper:#F4F1EA; --card:#FFFFFF; --card-alt:#F1EEE6;
-    --ink:#1B2430; --ink-soft:#5B6472; --ink-faint:#8991A0;
-    --line:#E5DFD1; --line-soft:#EEEAE0;
+    --paper:#EAEFF5; --card:#FFFFFF; --card-alt:#E1E8F0;
+    --ink:#152233; --ink-soft:#57697D; --ink-faint:#8A97A8;
+    --line:#D6E0E9; --line-soft:#E4EBF1;
     --ok:#2F6E4F; --ok-bg:#E7F2EC; --danger:#8B2E2E; --danger-bg:#F7E9E7; --warn:#92640A; --warn-bg:#F7EED9;
   }
   *{box-sizing:border-box;}
@@ -349,6 +349,9 @@
    ============================================================ */
 
 const HUB_KEY = 'hub_last_app_v1';
+const ICON_UPLOAD_CLOUD_HUB = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px; margin-right:2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 12v6m0-6l-2.5 2.5M12 12l2.5 2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_SPREADSHEET_HUB = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px; margin-right:2px;"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke="currentColor" stroke-width="1.7"/></svg>';
+const ICON_REFRESH_HUB = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px; margin-right:2px;"><path d="M21 12a9 9 0 11-2.6-6.36M21 3v6h-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const HUB_THEME_KEY = 'hub_theme_v1';
 const HUB_PIN_ADMIN_KEY = 'hub_pin_admin_v1';
 const HUB_PIN_STAFF_KEY = 'hub_pin_staff_v1';
@@ -912,8 +915,8 @@ function openHubSettings(){
       <h3>Cadangan Google Drive</h3>
       <div class="settings-card" style="padding:12px 14px;">
         <div class="helptext" style="margin-top:0;">Mengunggah/mengunduh data Jaringan &amp; WiFi sekaligus dalam satu proses. Client ID Google harus sudah diatur di masing-masing modul (menu Pengaturan &gt; Cadangan Data).</div>
-        <button type="button" class="btn-full-secondary" id="hubBackupUploadBtn">☁️ Backup Semua ke Drive</button>
-        <button type="button" class="btn-full-secondary" id="hubBackupDownloadBtn">⬇️ Pulihkan Semua dari Drive</button>
+        <button type="button" class="btn-full-secondary" id="hubBackupUploadBtn">${ICON_UPLOAD_CLOUD_HUB} Backup Semua ke Drive</button>
+        <button type="button" class="btn-full-secondary" id="hubBackupDownloadBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px; margin-right:2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 11v6m0 0l-2.5-2.5M12 17l2.5-2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Pulihkan Semua dari Drive</button>
         <div class="helptext">Pemulihan akan menimpa data yang ada di perangkat ini dengan data dari Drive.</div>
       </div>
     </div>
@@ -922,7 +925,7 @@ function openHubSettings(){
       <h3>Laporan</h3>
       <div class="settings-card" style="padding:12px 14px;">
         <div class="helptext" style="margin-top:0;">Unduh satu file Excel berisi data Jaringan, data WiFi, dan ringkasan — dalam sheet terpisah.</div>
-        <button type="button" class="btn-full-secondary" id="hubExportBtn">📊 Ekspor Laporan Gabungan (Excel)</button>
+        <button type="button" class="btn-full-secondary" id="hubExportBtn">${ICON_SPREADSHEET_HUB} Ekspor Laporan Gabungan (Excel)</button>
       </div>
     </div>
 
@@ -930,7 +933,7 @@ function openHubSettings(){
       <h3>Lainnya</h3>
       <div class="settings-card" style="padding:12px 14px;">
         <div class="helptext" style="margin-top:0;">Jika update terbaru belum muncul setelah mengganti file, gunakan ini untuk membersihkan cache secara paksa.</div>
-        <button type="button" class="btn-full-secondary" id="hubForceUpdateBtn">🔄 Perbarui Aplikasi (Bersihkan Cache)</button>
+        <button type="button" class="btn-full-secondary" id="hubForceUpdateBtn">${ICON_REFRESH_HUB} Perbarui Aplikasi (Bersihkan Cache)</button>
       </div>
     </div>
 

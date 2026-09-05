@@ -60,7 +60,7 @@
     --warn:#FBBF24;
     --warn-bg:rgba(251,191,36,.14);
     --p1:#F87171;
-    --p2:#22D3EE;
+    --p2:#FB923C;
     --p3:#818CF8;
     --radius:16px;
     --radius-sm:11px;
@@ -77,14 +77,14 @@
     --navy-800:#142A4D;
     --navy-700:#1D3A63;
     --navy-600:#2C4A78;
-    --paper:#F4F1EA;
+    --paper:#EAEFF5;
     --card:#FFFFFF;
-    --card-alt:#F1EEE6;
-    --ink:#1B2430;
-    --ink-soft:#5B6472;
-    --ink-faint:#8991A0;
-    --line:#E5DFD1;
-    --line-soft:#EEEAE0;
+    --card-alt:#E1E8F0;
+    --ink:#152233;
+    --ink-soft:#57697D;
+    --ink-faint:#8A97A8;
+    --line:#D6E0E9;
+    --line-soft:#E4EBF1;
     --ok:#2F6E4F;
     --ok-bg:#E7F2EC;
     --danger:#8B2E2E;
@@ -92,6 +92,7 @@
     --warn:#92640A;
     --warn-bg:#F7EED9;
     --p1:#8B2E2E;
+    --p2:#B35A17;
     --p3:#1D3A63;
     --shadow-sm:0 1px 2px rgba(11,31,58,.05), 0 1px 1px rgba(11,31,58,.04);
     --shadow-md:0 10px 26px -10px rgba(11,31,58,.22), 0 2px 6px -2px rgba(11,31,58,.08);
@@ -359,8 +360,10 @@
   .chip{
     flex:none; padding:7px 14px; border-radius:20px; border:1px solid var(--line); background:var(--card);
     font-size:12.5px; color:var(--ink-soft); white-space:nowrap; font-weight:500; transition:all .15s ease;
+    display:inline-flex; align-items:center; gap:6px;
   }
   .chip.active{background:var(--gold); border-color:var(--gold); color:#04121A; font-weight:700; box-shadow:var(--shadow-gold);}
+  .status-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; display:inline-block; }
   select.loc-filter{
     width:100%; padding:11px 12px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--card);
     font-size:13px; color:var(--ink); margin-bottom:10px; font-family:var(--font-body); box-shadow:var(--shadow-sm);
@@ -416,6 +419,7 @@
   .rec-detail-grid .dd.copyable{ padding:2px 4px; margin:-2px -4px; }
   .rec-meta span b{color:var(--ink); font-family:var(--font-mono); font-weight:600;}
   .rec-loc{margin-top:7px; font-size:11.5px; color:var(--gold-soft); font-weight:600; display:flex; align-items:center; gap:4px;}
+  .rec-loc.odp-line{ font-family:var(--font-mono); letter-spacing:.2px; }
   .rec-actions{display:flex; gap:8px; margin-top:11px; flex-wrap:wrap;}
   .rec-actions button{
     flex:1; padding:8px 0; border-radius:9px; border:1px solid var(--line); background:var(--paper);
@@ -711,7 +715,8 @@
     Sedang offline — data lokal tetap bisa diakses, peta &amp; font mungkin tidak dimuat.
   </div>
   <div class="install-banner" id="installBanner">
-    📲 Install aplikasi ini ke layar utama HP untuk akses lebih cepat.
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14" style="vertical-align:-2px; margin-right:2px;"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round"/></svg>
+    Install aplikasi ini ke layar utama HP untuk akses lebih cepat.
     <button id="installBtn">Install</button>
   </div>
 
@@ -760,7 +765,10 @@
       <button type="button" class="chip" data-map-status="AKTIF">Aktif</button>
       <button type="button" class="chip" data-map-status="NONAKTIF">Nonaktif</button>
       <button type="button" class="chip" data-map-status="ISOLIR">Isolir</button>
-      <button type="button" class="chip" id="mapTileToggle" data-tile="street">🛰️ Satelit</button>
+      <button type="button" class="chip" id="mapTileToggle" data-tile="street">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Satelit
+      </button>
     </div>
     <div id="locMap"></div>
     <div class="map-toolbar">
@@ -797,9 +805,9 @@
     </select>
     <div class="chip-row" id="statusChips">
       <button class="chip active" data-status="ALL">Semua Status</button>
-      <button class="chip" data-status="AKTIF">🟢 Aktif</button>
-      <button class="chip" data-status="NONAKTIF">🔴 Nonaktif</button>
-      <button class="chip" data-status="ISOLIR">🟠 Isolir</button>
+      <button class="chip" data-status="AKTIF"><span class="status-dot" style="background:#34D399;"></span>Aktif</button>
+      <button class="chip" data-status="NONAKTIF"><span class="status-dot" style="background:#F87171;"></span>Nonaktif</button>
+      <button class="chip" data-status="ISOLIR"><span class="status-dot" style="background:#FBBF24;"></span>Isolir</button>
     </div>
 
     <div class="action-bar">
@@ -929,9 +937,18 @@
       </button>
       <input type="file" id="importExcelInput" accept=".xlsx,.xls" style="display:none;">
     </div>
-    <button class="btn-secondary" id="exportBtn">⬇ Ekspor cadangan (JSON)</button>
-    <button class="btn-secondary" id="gdriveBackupBtn">☁ Backup ke Google Drive</button>
-    <button class="btn-secondary" id="gdriveRestoreBtn">⬇ Pulihkan dari Google Drive</button>
+    <button class="btn-secondary" id="exportBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14" style="vertical-align:-2px; margin-right:2px;"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round"/></svg>
+      Ekspor cadangan (JSON)
+    </button>
+    <button class="btn-secondary" id="gdriveBackupBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px; margin-right:2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke-linejoin="round"/><path d="M12 12v6m0-6l-2.5 2.5M12 12l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Backup ke Google Drive
+    </button>
+    <button class="btn-secondary" id="gdriveRestoreBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px; margin-right:2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke-linejoin="round"/><path d="M12 11v6m0 0l-2.5-2.5M12 17l2.5-2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Pulihkan dari Google Drive
+    </button>
     <div class="hint" id="gdriveStatus" style="margin-top:6px;"></div>
   </section>
 </main>
@@ -988,6 +1005,25 @@ const LOCATIONS = ["BRIMOB MAMUJU","BRIMOB POLMAN","GEDUNG BHAYANGKARI","GEDUNG 
 const STORE_KEY = 'sj_records_v1';
 let records = [];
 let state = { search:'', prio:'ALL', loc:'ALL', odp:'ALL', status:'ALL', expiry:'ALL', sortBy:'default' };
+
+/* ---------------- KUMPULAN IKON (SVG line-icon, konsisten dgn gaya app) ---------------- */
+const ICON_INSTALL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const ICON_SATELLITE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_MAP = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 7v13M15 4v13" stroke="currentColor" stroke-width="1.7"/></svg>';
+const ICON_DOWNLOAD = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const ICON_UPLOAD_CLOUD = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 12v6m0-6l-2.5 2.5M12 12l2.5 2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_DOWNLOAD_CLOUD = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 11v6m0 0l-2.5-2.5M12 17l2.5-2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_WARNING = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:-3px;"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_CLOCK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:-3px;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_PIN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.8"/></svg>';
+const ICON_PLUG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="vertical-align:-1px;"><path d="M9 3v6M15 3v6M6 9h12v3a6 6 0 01-6 6 6 6 0 01-6-6z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const ICON_KEY = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l9 9m-4-4l2.5-2.5M14 14l2-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_SEND_ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_DUPLICATE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M4 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.8"/></svg>';
+const ICON_GALLERY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_PENCIL = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_PRINTER = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-5a2 2 0 012-2h14a2 2 0 012 2v5a1 1 0 01-1 1h-2M6 14h12v7H6v-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_PDF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
 
 function loadRecords(){
   const raw = localStorage.getItem(STORE_KEY);
@@ -1870,7 +1906,9 @@ document.getElementById('mapStatusFilter').addEventListener('click', e=>{
 document.getElementById('mapTileToggle').addEventListener('click', ()=>{
   mapTileStyle = mapTileStyle === 'street' ? 'satellite' : 'street';
   const btn = document.getElementById('mapTileToggle');
-  btn.textContent = mapTileStyle === 'street' ? '🛰️ Satelit' : '🗺️ Jalan';
+  const icSat = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const icMap = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13" style="vertical-align:-2px;"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z" stroke-linejoin="round"/><path d="M9 7v13M15 4v13"/></svg>';
+  btn.innerHTML = mapTileStyle === 'street' ? (icSat + ' Satelit') : (icMap + ' Jalan');
   btn.classList.toggle('active', mapTileStyle === 'satellite');
   if(_locMapInstance && _tileLayer){
     _locMapInstance.removeLayer(_tileLayer);
@@ -2109,10 +2147,10 @@ function renderData(){
   const banner = document.getElementById('expiryFilterBanner');
   if(state.expiry === 'OVERDUE'){
     banner.style.display = 'block';
-    banner.innerHTML = `<div class="expiry-banner">⚠️ Menampilkan kontrak yang sudah lewat jatuh tempo <button id="clearExpiryBtn">Hapus Filter</button></div>`;
+    banner.innerHTML = `<div class="expiry-banner">${ICON_WARNING} Menampilkan kontrak yang sudah lewat jatuh tempo <button id="clearExpiryBtn">Hapus Filter</button></div>`;
   } else if(state.expiry === 'SOON30'){
     banner.style.display = 'block';
-    banner.innerHTML = `<div class="expiry-banner warn">⏳ Menampilkan kontrak yang akan berakhir ≤30 hari <button id="clearExpiryBtn">Hapus Filter</button></div>`;
+    banner.innerHTML = `<div class="expiry-banner warn">${ICON_CLOCK} Menampilkan kontrak yang akan berakhir ≤30 hari <button id="clearExpiryBtn">Hapus Filter</button></div>`;
   } else {
     banner.style.display = 'none';
     banner.innerHTML = '';
@@ -2139,10 +2177,10 @@ function renderData(){
         </div>
       </div>
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:4px;">
-        <div class="rec-loc copyable" style="margin-top:0;" onclick="copyField('${escJsAttr(r['Lokasi'])}','Lokasi')">📍 ${r['Lokasi']||'-'}</div>
+        <div class="rec-loc copyable" style="margin-top:0;" onclick="copyField('${escJsAttr(r['Lokasi'])}','Lokasi')">${ICON_PIN} ${r['Lokasi']||'-'}</div>
         ${statusBadge(r)}
       </div>
-      ${r['ODP'] ? `<div class="rec-loc copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">🔌 ODP: ${r['ODP']}</div>` : ''}
+      ${r['ODP'] ? `<div class="rec-loc odp-line copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">${ICON_PLUG} ODP: ${r['ODP']}</div>` : ''}
       <div class="rec-meta">
         <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${r['Customer ID']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
         <span class="copyable" onclick="copyField('${escJsAttr(r['Serial Number'])}','Serial Number')">SN: <b>${r['Serial Number']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
@@ -2169,13 +2207,13 @@ function renderData(){
       </div>
       ${(r['Nama Jaringan']||r['Password WiFi']) ? `
       <div class="rec-actions">
-        <button onclick="copyWifiPass('${r._id}')">🔑 Salin Password</button>
+        <button onclick="copyWifiPass('${r._id}')">${ICON_KEY} Salin Password</button>
         <button onclick="showWifiQr('${r._id}')">▦ QR WiFi</button>
       </div>` : ''}
       <div class="rec-actions">
         <button onclick="copyAllDetails('${r._id}')">⧉ Salin Semua</button>
-        <button onclick="shareRecord('${r._id}')">📤 Kirim Info</button>
-        <button onclick="duplicateRecord('${r._id}')">🗐 Duplikat</button>
+        <button onclick="shareRecord('${r._id}')">${ICON_SEND_ARROW} Kirim Info</button>
+        <button onclick="duplicateRecord('${r._id}')">${ICON_DUPLICATE} Duplikat</button>
       </div>
       <div class="rec-actions">
         <button onclick="openDetail('${r._id}')">Detail</button>
@@ -2284,7 +2322,7 @@ function openDetail(id){
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
-        <button type="button" class="btn-secondary" style="margin-bottom:15px;" onclick="copyWifiPass('${r._id}')">🔑 Salin Password WiFi</button>`;
+        <button type="button" class="btn-secondary" style="margin-bottom:15px;" onclick="copyWifiPass('${r._id}')">${ICON_KEY} Salin Password WiFi</button>`;
         }
         if(f === 'Serial Number'){
           return `
@@ -2464,8 +2502,8 @@ function shareRecord(id){
     <div class="modal-title">Kirim Info — ${r['Nama Ruangan']||'Data'}</div>
     <div class="report-preview">${text.replace(/</g,'&lt;')}</div>
     <div class="report-actions">
-      <button type="button" class="btn-wa" id="shareWaBtn">📲 Kirim via WhatsApp</button>
-      <button type="button" class="btn-tg" id="shareTgBtn">✈️ Kirim via Telegram</button>
+      <button type="button" class="btn-wa" id="shareWaBtn">${ICON_SEND_ARROW} Kirim via WhatsApp</button>
+      <button type="button" class="btn-tg" id="shareTgBtn">${ICON_SEND_ARROW} Kirim via Telegram</button>
       <button type="button" class="btn-secondary" id="shareCopyBtn">⧉ Salin Teks</button>
       <button type="button" class="btn-secondary" id="closeShareBtn">Tutup</button>
     </div>
@@ -2538,9 +2576,9 @@ async function openBarcodeScanner(targetInputId){
         <video id="scannerVideo" autoplay playsinline muted></video>
         <div class="scanner-frame"></div>
       </div>` : ''}
-      <button type="button" class="btn-secondary" id="scannerGalleryBtn" style="width:100%; margin-bottom:8px;">🖼️ Pilih Foto dari Galeri</button>
+      <button type="button" class="btn-secondary" id="scannerGalleryBtn" style="width:100%; margin-bottom:8px;">${ICON_GALLERY} Pilih Foto dari Galeri</button>
       <input type="file" id="scannerFileInput" accept="image/*" style="display:none;">
-      <button type="button" class="btn-secondary" id="scannerManualBtn" style="width:100%; margin-bottom:8px;">✏️ Ketik Manual Saja</button>
+      <button type="button" class="btn-secondary" id="scannerManualBtn" style="width:100%; margin-bottom:8px;">${ICON_PENCIL} Ketik Manual Saja</button>
       <button type="button" class="btn-secondary" id="scannerCloseBtn" style="width:100%;">Batal</button>
     </div>
   `;
@@ -2738,11 +2776,11 @@ function showReportResult(data){
     <div class="modal-title">Pratinjau Laporan</div>
     <div class="report-preview" id="reportPreviewText"></div>
     <div class="report-actions">
-      <button type="button" class="btn-wa" id="sendWaBtn">📲 Kirim via WhatsApp</button>
-      <button type="button" class="btn-tg" id="sendTgBtn">✈️ Kirim via Telegram</button>
+      <button type="button" class="btn-wa" id="sendWaBtn">${ICON_SEND_ARROW} Kirim via WhatsApp</button>
+      <button type="button" class="btn-tg" id="sendTgBtn">${ICON_SEND_ARROW} Kirim via Telegram</button>
       <button type="button" class="btn-secondary" id="copyReportBtn">⧉ Salin Teks</button>
-      <button type="button" class="btn-secondary" id="printReportBtn">🖨 Cetak</button>
-      <button type="button" class="btn-secondary" id="pdfReportBtn">📄 Simpan sebagai PDF</button>
+      <button type="button" class="btn-secondary" id="printReportBtn">${ICON_PRINTER} Cetak</button>
+      <button type="button" class="btn-secondary" id="pdfReportBtn">${ICON_PDF} Simpan sebagai PDF</button>
       <button type="button" class="btn-secondary" id="closeReportResultBtn">Tutup</button>
     </div>
   `;

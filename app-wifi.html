@@ -46,9 +46,9 @@
   }
   html[data-theme="light"]{
     --navy-950:#071427; --navy-900:#0B1F3A; --navy-800:#142A4D; --navy-700:#1D3A63; --navy-600:#2C4A78;
-    --paper:#F4F1EA; --card:#FFFFFF; --card-alt:#F1EEE6;
-    --ink:#1B2430; --ink-soft:#5B6472; --ink-faint:#8991A0;
-    --line:#E5DFD1; --line-soft:#EEEAE0;
+    --paper:#EAEFF5; --card:#FFFFFF; --card-alt:#E1E8F0;
+    --ink:#152233; --ink-soft:#57697D; --ink-faint:#8A97A8;
+    --line:#D6E0E9; --line-soft:#E4EBF1;
     --ok:#2F6E4F; --ok-bg:#E7F2EC; --danger:#8B2E2E; --danger-bg:#F7E9E7; --warn:#92640A; --warn-bg:#F7EED9;
     --shadow-sm:0 1px 2px rgba(11,31,58,.05), 0 1px 1px rgba(11,31,58,.04);
     --shadow-md:0 10px 26px -10px rgba(11,31,58,.22), 0 2px 6px -2px rgba(11,31,58,.08);
@@ -174,7 +174,7 @@
   .pass-input-wrap{position:relative; display:flex; gap:6px;}
   .pass-input-wrap input{padding-right:40px; font-family:var(--font-mono);}
   .pass-input-wrap .icon-btn{position:absolute; right:5px; top:5px;}
-  .gen-btn{flex-shrink:0; height:44px; padding:0 12px; border-radius:10px; border:1px solid rgba(34,211,238,.35); background:rgba(34,211,238,.1); color:var(--gold-soft); font-size:12px; font-weight:700; cursor:pointer;}
+  .gen-btn{flex-shrink:0; height:44px; padding:0 12px; border-radius:10px; border:1px solid rgba(34,211,238,.35); background:rgba(34,211,238,.1); color:var(--gold-soft); font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;}
   .history-link{font-size:11.5px; color:var(--gold-soft); text-decoration:underline; cursor:pointer; margin-top:6px; display:inline-block;}
   .btn-primary{width:100%; padding:13px; border-radius:12px; border:none; background:linear-gradient(160deg, var(--gold), var(--gold-deep)); color:#04121A; font-weight:700; font-size:14.5px; cursor:pointer; margin-top:4px;}
   .btn-primary:active{transform:scale(.98);}
@@ -476,6 +476,14 @@ const ICON_STAR = (on) => `<svg width="14" height="14" viewBox="0 0 24 24" fill=
 const ICON_PRINT = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-5a2 2 0 012-2h14a2 2 0 012 2v5a1 1 0 01-1 1h-2M6 14h12v7H6v-7z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const ICON_COPYALL = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 12h6m-6 4h6M8 4h8a2 2 0 012 2v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 const ICON_HISTORY = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 109-9 9 9 0 00-9 9zm9-5v5l3.5 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_SHARE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7M16 6l-4-4-4 4M12 2v14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_DUPLICATE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M4 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.7"/></svg>';
+const ICON_LOCATION = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.7"/></svg>';
+const ICON_CAMERA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="1.7"/></svg>';
+const ICON_GALLERY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.7"/><circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.7"/><path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_SEND = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_CHECKBOX = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M8 12l3 3 5-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_SHUFFLE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function escapeHtml(s){
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -507,7 +515,7 @@ function renderDashboard(){
     </div>
 
     ${pinned.length ? `
-    <div class="section-title">⭐ Favorit</div>
+    <div class="section-title">${ICON_STAR(true)} Favorit</div>
     <div class="wifi-list">${pinned.map(r => wifiCardHtml(r)).join('')}</div>` : ''}
 
     ${topLocs.length ? `
@@ -539,9 +547,9 @@ function renderData(){
     </div>
     <div class="filter-row" id="bandFilterRow">
       ${bands.map(b => `<div class="chip ${dataFilter.band===b?'active':''}" data-band="${b}">${b==='all'?'Semua Band':b}</div>`).join('')}
-      <div class="chip ${dataFilter.groupByLocation?'active':''}" id="groupChip">📍 Kelompokkan Lokasi</div>
-      ${currentRole !== 'staff' ? '<div class="chip" id="scanAddChip">📷 Scan QR Tambah</div>' : ''}
-      ${currentRole !== 'staff' ? '<div class="chip" id="bulkToggleChip">☑ Pilih Banyak</div>' : ''}
+      <div class="chip ${dataFilter.groupByLocation?'active':''}" id="groupChip">${ICON_LOCATION} Kelompokkan Lokasi</div>
+      ${currentRole !== 'staff' ? `<div class="chip" id="scanAddChip">${ICON_CAMERA} Scan QR Tambah</div>` : ''}
+      ${currentRole !== 'staff' ? `<div class="chip" id="bulkToggleChip">${ICON_CHECKBOX} Pilih Banyak</div>` : ''}
     </div>
     <div id="wifiBulkBar" style="display:none;"></div>
     <div class="wifi-list" id="wifiListWrap"></div>
@@ -620,8 +628,8 @@ function wifiCardHtml(r){
       <button class="icon-btn act-pin ${r.pinned?'on':''}" title="Favorit">${ICON_STAR(!!r.pinned)}</button>
       <button class="icon-btn act-copyall" title="Salin semua">${ICON_COPYALL} Salin</button>
       <button class="icon-btn qr act-qr" title="QR Connect">${ICON_QR} QR</button>
-      <button class="icon-btn act-share" title="Kirim Info">📤 Kirim</button>
-      <button class="icon-btn act-dup" title="Duplikat">🗐 Duplikat</button>
+      <button class="icon-btn act-share" title="Kirim Info">${ICON_SHARE} Kirim</button>
+      <button class="icon-btn act-dup" title="Duplikat">${ICON_DUPLICATE} Duplikat</button>
       <button class="icon-btn act-print" title="Cetak label">${ICON_PRINT} Cetak</button>
       <button class="icon-btn act-edit" title="Edit">${ICON_EDIT} Edit</button>
       <button class="icon-btn danger act-delete" title="Hapus">${ICON_TRASH} Hapus</button>
@@ -677,8 +685,8 @@ function shareWifiRecord(rec){
     <div class="close-x" id="closeShareBtn">✕</div>
     <div class="modal-title">Kirim Info — ${escapeHtml(rec.ssid||'WiFi')}</div>
     <div style="white-space:pre-wrap; background:var(--navy-950); border:1px solid var(--line); border-radius:10px; padding:12px; font-size:13px; margin-bottom:14px; font-family:var(--font-mono, monospace);">${escapeHtml(text)}</div>
-    <button class="btn-primary" id="shareWaBtn" style="background:linear-gradient(160deg,#2CD46B,#1DAA55);">📲 Kirim via WhatsApp</button>
-    <button class="btn-primary" id="shareTgBtn" style="background:linear-gradient(160deg,#3DB4E8,#1B94D2); margin-top:8px;">✈️ Kirim via Telegram</button>
+    <button class="btn-primary" id="shareWaBtn" style="background:linear-gradient(160deg,#2CD46B,#1DAA55); display:flex; align-items:center; justify-content:center; gap:8px;">${ICON_SEND} Kirim via WhatsApp</button>
+    <button class="btn-primary" id="shareTgBtn" style="background:linear-gradient(160deg,#3DB4E8,#1B94D2); margin-top:8px; display:flex; align-items:center; justify-content:center; gap:8px;">${ICON_SEND} Kirim via Telegram</button>
     <button class="btn-secondary" id="shareCopyBtn">⧉ Salin Teks</button>
   `);
   overlay.querySelector('#closeShareBtn').addEventListener('click', () => closeModal(overlay));
@@ -723,7 +731,7 @@ async function openWifiQrScanner(){
         <video id="wvScannerVideo" autoplay playsinline muted style="width:100%; border-radius:12px; background:#000; max-height:50vh; object-fit:cover;"></video>
         <div class="scanner-frame-wifi"></div>
       </div>` : ''}
-      <button type="button" class="btn-secondary" id="wvScannerGalleryBtn" style="width:100%;">🖼️ Pilih Foto dari Galeri</button>
+      <button type="button" class="btn-secondary" id="wvScannerGalleryBtn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">${ICON_GALLERY} Pilih Foto dari Galeri</button>
       <input type="file" id="wvScannerFileInput" accept="image/*" style="display:none;">
       <button type="button" class="btn-secondary" id="wvScannerCancelBtn" style="width:100%; margin-top:8px;">Batal</button>
     </div>
@@ -903,7 +911,7 @@ function openFormModal(rec, prefillData){
       <div class="pass-input-wrap">
         <input type="text" id="f_password" placeholder="Kosongkan jika tanpa password" value="${escapeHtml(r.password)}" style="flex:1;">
         <button type="button" class="icon-btn" id="f_toggleShowBtn" style="position:static;">${ICON_EYE}</button>
-        <button type="button" class="gen-btn" id="f_genBtn">🎲 Acak</button>
+        <button type="button" class="gen-btn" id="f_genBtn">${ICON_SHUFFLE} Acak</button>
       </div>
       ${editing && r.passwordHistory && r.passwordHistory.length ? `<span class="history-link" id="viewHistoryBtn">${ICON_HISTORY} Lihat riwayat password (${r.passwordHistory.length})</span>` : ''}
       <div id="pwStrengthBar" style="margin-top:8px;"></div>
@@ -999,8 +1007,8 @@ function openAddChoiceModal(){
   const overlay = openModal(`
     <div class="modal-title">Tambah WiFi</div>
     <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:14px;">Scan QR di stiker router untuk isi otomatis, atau isi manual.</div>
-    <button class="btn-primary" id="choiceScanBtn">📷 Scan QR WiFi</button>
-    <button class="btn-secondary" id="choiceManualBtn" style="margin-top:8px;">✏️ Isi Manual</button>
+    <button class="btn-primary" id="choiceScanBtn" style="display:flex; align-items:center; justify-content:center; gap:8px;">${ICON_CAMERA} Scan QR WiFi</button>
+    <button class="btn-secondary" id="choiceManualBtn" style="margin-top:8px; display:flex; align-items:center; justify-content:center; gap:8px;">${ICON_EDIT} Isi Manual</button>
     <button class="btn-secondary" id="choiceCancelBtn" style="margin-top:8px;">Batal</button>
   `, {centered:true});
   overlay.querySelector('#choiceScanBtn').addEventListener('click', () => { closeModal(overlay); openWifiQrScanner(); });
