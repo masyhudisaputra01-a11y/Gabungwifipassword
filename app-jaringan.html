@@ -530,6 +530,17 @@
     font-size:13px; font-weight:600; margin-top:8px; font-family:var(--font-body); transition:border-color .15s ease, color .15s ease;
   }
   .btn-secondary:active{background:var(--paper);}
+  .btn-ghost{
+    width:100%; padding:12px; border:none; border-radius:var(--radius-sm); background:none; color:var(--ink-faint);
+    font-size:13px; font-weight:600; margin-top:4px; font-family:var(--font-body);
+  }
+  .btn-ghost:active{color:var(--ink-soft);}
+  .btn-caution{
+    width:100%; padding:12px; border:1px solid rgba(251,191,36,.4); border-radius:var(--radius-sm); background:rgba(251,191,36,.08); color:#B8860B;
+    font-size:13px; font-weight:700; margin-top:8px; font-family:var(--font-body); transition:border-color .15s ease;
+  }
+  html[data-theme="dark"] .btn-caution{ color:#FBBF24; }
+  .btn-caution:active{background:rgba(251,191,36,.14);}
 
   /* ---------- PIN LOCK ---------- */
   .lock-overlay{
@@ -644,13 +655,14 @@
     header.app-header, nav.tabbar, .install-banner, .modal-overlay, .toast{ display:none !important; }
   }
   .print-head{display:flex; align-items:center; gap:12px; border-bottom:3px solid #0B1F3A; padding-bottom:10px; margin-bottom:14px;}
+  .print-head img{width:52px; height:52px; object-fit:contain; flex-shrink:0;}
   .print-head h1{font-family:var(--font-display); font-size:18px; margin:0; color:#0B1F3A;}
   .print-head p{margin:2px 0 0; font-size:11px; color:#5B6472;}
   .print-meta{font-size:11px; color:#5B6472; margin-bottom:12px; display:flex; justify-content:space-between;}
   table.print-table{width:100%; border-collapse:collapse; font-size:10.5px;}
   table.print-table th, table.print-table td{border:1px solid #ccc; padding:5px 6px; text-align:left; vertical-align:top;}
   table.print-table th{background:#0B1F3A; color:#fff; font-weight:600; font-size:10px; text-transform:uppercase;}
-  table.print-table tr:nth-child(even) td{background:#F5F2EC;}
+  table.print-table tr:nth-child(even) td{background:#EEF1F5;}
   .print-foot{margin-top:14px; font-size:9.5px; color:#8a92a0; text-align:right;}
 </style>
 </head>
@@ -766,7 +778,7 @@
       <button type="button" class="chip" data-map-status="NONAKTIF">Nonaktif</button>
       <button type="button" class="chip" data-map-status="ISOLIR">Isolir</button>
       <button type="button" class="chip" id="mapTileToggle" data-tile="street">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Satelit
       </button>
     </div>
@@ -945,7 +957,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px; margin-right:2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke-linejoin="round"/><path d="M12 12v6m0-6l-2.5 2.5M12 12l2.5 2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Backup ke Google Drive
     </button>
-    <button class="btn-secondary" id="gdriveRestoreBtn">
+    <button class="btn-caution" id="gdriveRestoreBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px; margin-right:2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke-linejoin="round"/><path d="M12 11v6m0 0l-2.5-2.5M12 17l2.5-2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Pulihkan dari Google Drive
     </button>
@@ -976,6 +988,7 @@
 
 <div id="printArea">
   <div class="print-head">
+    <img src="emblem_header.png" alt="Lambang Polda Sulawesi Barat">
     <div>
       <h1>Data Inet — Polda Sulawesi Barat</h1>
       <p>Laporan Data Jaringan HSI / Internet</p>
@@ -1008,22 +1021,22 @@ let state = { search:'', prio:'ALL', loc:'ALL', odp:'ALL', status:'ALL', expiry:
 
 /* ---------------- KUMPULAN IKON (SVG line-icon, konsisten dgn gaya app) ---------------- */
 const ICON_INSTALL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-const ICON_SATELLITE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ICON_MAP = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 7v13M15 4v13" stroke="currentColor" stroke-width="1.7"/></svg>';
+const ICON_SATELLITE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_MAP = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 7v13M15 4v13" stroke="currentColor" stroke-width="1.7"/></svg>';
 const ICON_DOWNLOAD = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 const ICON_UPLOAD_CLOUD = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 12v6m0-6l-2.5 2.5M12 12l2.5 2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const ICON_DOWNLOAD_CLOUD = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M7 18a4.5 4.5 0 01-.5-8.97A5.5 5.5 0 0117 8.5a4 4 0 01-.4 8H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 11v6m0 0l-2.5-2.5M12 17l2.5-2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const ICON_WARNING = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:-3px;"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ICON_CLOCK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:-3px;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_CLOCK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:-3px;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const ICON_PIN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.8"/></svg>';
 const ICON_PLUG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="vertical-align:-1px;"><path d="M9 3v6M15 3v6M6 9h12v3a6 6 0 01-6 6 6 6 0 01-6-6z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-const ICON_KEY = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l9 9m-4-4l2.5-2.5M14 14l2-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_KEY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l9 9m-4-4l2.5-2.5M14 14l2-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const ICON_SEND_ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ICON_DUPLICATE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M4 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.8"/></svg>';
+const ICON_DUPLICATE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M4 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.8"/></svg>';
 const ICON_GALLERY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.8"/><path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ICON_PENCIL = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ICON_PRINTER = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-5a2 2 0 012-2h14a2 2 0 012 2v5a1 1 0 01-1 1h-2M6 14h12v7H6v-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ICON_PDF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+const ICON_PENCIL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_PRINTER = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-5a2 2 0 012-2h14a2 2 0 012 2v5a1 1 0 01-1 1h-2M6 14h12v7H6v-7z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_PDF = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
 
 function loadRecords(){
   const raw = localStorage.getItem(STORE_KEY);
@@ -1107,7 +1120,10 @@ function openTrashManager(){
     <div class="modal-title">Tempat Sampah (${trash.length})</div>
     <div class="edit-hint">Data yang dihapus disimpan di sini sampai dikosongkan manual.</div>
     <div>
-      ${trash.length === 0 ? '<div class="empty-state"><div>Sampah kosong.</div></div>' : trash.map(r=>`
+      ${trash.length === 0 ? `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z"/></svg>
+        <div>Tempat sampah masih kosong.</div>
+      </div>` : trash.map(r=>`
         <div class="loc-manage-row">
           <div class="loc-manage-name">${r['Nama Ruangan']||'(tanpa nama)'}<small>Dihapus ${fmtTgl(r._deletedAt)}</small></div>
           <button type="button" onclick="restoreFromTrash('${r._id}')">Pulihkan</button>
@@ -1115,7 +1131,7 @@ function openTrashManager(){
         </div>`).join('')}
     </div>
     ${trash.length ? '<button type="button" class="btn-secondary" style="color:var(--danger); border-color:rgba(248,113,113,.3);" id="emptyTrashBtn">Kosongkan Semua Sampah</button>' : ''}
-    <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
+    <button type="button" class="btn-ghost" id="closeModalBtn">Tutup</button>
   `;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -1130,13 +1146,16 @@ function openAuditLog(){
     <div class="modal-title">Riwayat Aktivitas</div>
     <div class="edit-hint">200 aktivitas terakhir pada perangkat ini.</div>
     <div>
-      ${log.length === 0 ? '<div class="empty-state"><div>Belum ada aktivitas tercatat.</div></div>' : log.map(l=>`
+      ${log.length === 0 ? `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        <div>Belum ada aktivitas tercatat.</div>
+      </div>` : log.map(l=>`
         <div class="loc-manage-row">
           <div class="loc-manage-name">${l.action}${l.detail ? ' — '+l.detail : ''}<small>oleh ${l.user||'Pengguna'} · ${new Date(l.ts).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</small></div>
         </div>`).join('')}
     </div>
     ${log.length ? '<button type="button" class="btn-secondary" style="color:var(--danger); border-color:rgba(248,113,113,.3);" id="clearLogBtn">Hapus Riwayat</button>' : ''}
-    <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
+    <button type="button" class="btn-ghost" id="closeModalBtn">Tutup</button>
   `;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -1500,7 +1519,7 @@ function openSettings(){
       </div>
     </div>
 
-    <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
+    <button type="button" class="btn-ghost" id="closeModalBtn">Tutup</button>
   `;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -1571,7 +1590,7 @@ function openAbout(){
         <span>Data Inet v1.0<small>${records.length} titik layanan terdaftar</small></span>
       </div>
     </div>
-    <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
+    <button type="button" class="btn-ghost" id="closeModalBtn">Tutup</button>
   `;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -1609,7 +1628,7 @@ function openPinManager(){
     <div class="field"><label>Ulangi PIN Baru</label><input type="tel" inputmode="numeric" maxlength="4" id="newPin2"></div>
     <button type="button" class="btn-primary" id="savePinBtn">Simpan PIN</button>
     ${pinSet ? '<button type="button" class="btn-secondary" id="removePinBtn">Hapus PIN</button>' : ''}
-    <button type="button" class="btn-secondary" id="backSettingsBtn">&larr; Kembali</button>
+    <button type="button" class="btn-ghost" id="backSettingsBtn">&larr; Kembali</button>
   `;
   document.getElementById('savePinBtn').addEventListener('click', ()=>{
     const p1 = document.getElementById('newPin1').value.trim();
@@ -1906,8 +1925,8 @@ document.getElementById('mapStatusFilter').addEventListener('click', e=>{
 document.getElementById('mapTileToggle').addEventListener('click', ()=>{
   mapTileStyle = mapTileStyle === 'street' ? 'satellite' : 'street';
   const btn = document.getElementById('mapTileToggle');
-  const icSat = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const icMap = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="13" height="13" style="vertical-align:-2px;"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z" stroke-linejoin="round"/><path d="M9 7v13M15 4v13"/></svg>';
+  const icSat = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const icMap = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px;"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z" stroke-linejoin="round"/><path d="M9 7v13M15 4v13"/></svg>';
   btn.innerHTML = mapTileStyle === 'street' ? (icSat + ' Satelit') : (icMap + ' Jalan');
   btn.classList.toggle('active', mapTileStyle === 'satellite');
   if(_locMapInstance && _tileLayer){
@@ -1940,7 +1959,7 @@ function openMapManager(){
         </div>`;
       }).join('')}
     </div>
-    <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
+    <button type="button" class="btn-ghost" id="closeModalBtn">Tutup</button>
   `;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -1967,7 +1986,7 @@ function openLocEditor(loc){
     </div>
     <button type="button" class="btn-primary" id="saveLocPointBtn">Simpan Titik</button>
     ${isCustom ? '<button type="button" class="btn-secondary" id="resetLocPointBtn">Hapus Titik Kustom (pakai bawaan)</button>' : ''}
-    <button type="button" class="btn-secondary" id="backToManagerBtn">&larr; Kembali ke Daftar</button>
+    <button type="button" class="btn-ghost" id="backToManagerBtn">&larr; Kembali ke Daftar</button>
   `;
   document.getElementById('modalOverlay').classList.add('show');
 
@@ -2343,7 +2362,7 @@ function openDetail(id){
         </div>`;
       }).join('')}
       <button type="submit" class="btn-primary">Simpan Perubahan</button>
-      <button type="button" class="btn-secondary" id="closeModalBtn">Tutup</button>
+      <button type="button" class="btn-ghost" id="closeModalBtn">Tutup</button>
     </form>
 
     <div class="settings-section" style="margin-top:22px;">
@@ -2505,7 +2524,7 @@ function shareRecord(id){
       <button type="button" class="btn-wa" id="shareWaBtn">${ICON_SEND_ARROW} Kirim via WhatsApp</button>
       <button type="button" class="btn-tg" id="shareTgBtn">${ICON_SEND_ARROW} Kirim via Telegram</button>
       <button type="button" class="btn-secondary" id="shareCopyBtn">⧉ Salin Teks</button>
-      <button type="button" class="btn-secondary" id="closeShareBtn">Tutup</button>
+      <button type="button" class="btn-ghost" id="closeShareBtn">Tutup</button>
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('show');
@@ -2579,7 +2598,7 @@ async function openBarcodeScanner(targetInputId){
       <button type="button" class="btn-secondary" id="scannerGalleryBtn" style="width:100%; margin-bottom:8px;">${ICON_GALLERY} Pilih Foto dari Galeri</button>
       <input type="file" id="scannerFileInput" accept="image/*" style="display:none;">
       <button type="button" class="btn-secondary" id="scannerManualBtn" style="width:100%; margin-bottom:8px;">${ICON_PENCIL} Ketik Manual Saja</button>
-      <button type="button" class="btn-secondary" id="scannerCloseBtn" style="width:100%;">Batal</button>
+      <button type="button" class="btn-ghost" id="scannerCloseBtn" style="width:100%;">Batal</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -2691,7 +2710,7 @@ function showWifiQr(id){
     <div style="text-align:center; margin-top:10px; font-size:13px; color:var(--ink-soft);">
       SSID: <b>${ssid||'-'}</b><br>Scan untuk langsung terhubung ke WiFi ini.
     </div>
-    <button type="button" class="btn-secondary" id="closeQrBtn" style="margin-top:16px;">Tutup</button>
+    <button type="button" class="btn-ghost" id="closeQrBtn" style="margin-top:16px;">Tutup</button>
   `;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeQrBtn').addEventListener('click', closeModal);
@@ -2734,7 +2753,7 @@ function openReportForm(id){
         <input type="text" name="pic" placeholder="Nama pelapor / PIC" value="${esc(r['PIC/Teknisi'])}">
       </div>
       <button type="submit" class="btn-primary">Buat Laporan</button>
-      <button type="button" class="btn-secondary" id="closeReportBtn">Batal</button>
+      <button type="button" class="btn-ghost" id="closeReportBtn">Batal</button>
     </form>
   `;
   document.getElementById('modalOverlay').classList.add('show');
@@ -2781,7 +2800,7 @@ function showReportResult(data){
       <button type="button" class="btn-secondary" id="copyReportBtn">⧉ Salin Teks</button>
       <button type="button" class="btn-secondary" id="printReportBtn">${ICON_PRINTER} Cetak</button>
       <button type="button" class="btn-secondary" id="pdfReportBtn">${ICON_PDF} Simpan sebagai PDF</button>
-      <button type="button" class="btn-secondary" id="closeReportResultBtn">Tutup</button>
+      <button type="button" class="btn-ghost" id="closeReportResultBtn">Tutup</button>
     </div>
   `;
   document.getElementById('reportPreviewText').textContent = text;
@@ -2853,6 +2872,14 @@ async function downloadReportAsPdf(data){
   printArea.style.cssText = 'display:block; position:fixed; left:-9999px; top:0; width:780px; padding:24px; background:#fff; z-index:-1;';
 
   try{
+    const logoImg = printArea.querySelector('.print-head img');
+    if(logoImg && !logoImg.complete){
+      await new Promise(resolve => {
+        logoImg.addEventListener('load', resolve, { once:true });
+        logoImg.addEventListener('error', resolve, { once:true });
+        setTimeout(resolve, 1500);
+      });
+    }
     const canvas = await html2canvas(printArea, { scale:2, backgroundColor:'#ffffff', useCORS:true });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const { jsPDF } = window.jspdf;
@@ -2976,7 +3003,7 @@ function askGdriveClientId(prefill){
         <input type="text" name="clientId" placeholder="xxxxxxxxxx.apps.googleusercontent.com" value="${prefill? String(prefill).replace(/"/g,'&quot;'):''}" required>
       </div>
       <button type="submit" class="btn-primary">Simpan & Hubungkan</button>
-      <button type="button" class="btn-secondary" id="gdriveCancelBtn">Batal</button>
+      <button type="button" class="btn-ghost" id="gdriveCancelBtn">Batal</button>
     </form>
   `;
   document.getElementById('modalOverlay').classList.add('show');

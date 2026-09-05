@@ -176,6 +176,7 @@
   .sr-body b{ font-size:13.5px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sr-body span{ font-size:11.5px; color:var(--ink-soft); display:block; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sr-empty{ text-align:center; color:var(--ink-faint); font-size:13px; padding:40px 20px; }
+  .sr-empty svg{ display:block; margin:0 auto 12px; opacity:.5; }
 
   /* ===== LOCK SCREEN ===== */
   #lockScreen{
@@ -219,6 +220,8 @@
   .btn-primary{ width:100%; padding:12px; border-radius:12px; border:none; background:linear-gradient(160deg, var(--gold), var(--gold-deep)); color:#04121A; font-weight:700; font-size:14px; cursor:pointer; margin-top:4px; }
   .btn-secondary{ width:auto; margin:0; padding:9px 14px; border-radius:10px; border:1px solid var(--line); background:var(--card-alt); color:var(--ink); font-weight:600; font-size:12.5px; cursor:pointer; }
   .btn-full-secondary{ width:100%; padding:11px; border-radius:12px; border:1px solid var(--line); background:var(--card-alt); color:var(--ink); font-weight:600; font-size:13px; cursor:pointer; margin-top:9px; }
+  .btn-ghost{ width:100%; padding:11px; border-radius:12px; border:none; background:none; color:var(--ink-faint); font-weight:600; font-size:13px; cursor:pointer; margin-top:4px; }
+  .btn-ghost:active{ color:var(--ink-soft); }
   .btn-danger{ width:100%; padding:11px; border-radius:12px; border:1px solid rgba(248,113,113,.3); background:var(--danger-bg); color:var(--danger); font-weight:700; font-size:13px; cursor:pointer; margin-top:9px; }
   .field{ margin-bottom:12px; }
   .field label{ display:block; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
@@ -306,7 +309,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
   </div>
-  <div id="searchResults"><div class="sr-empty">Ketik untuk mencari di Data Jaringan &amp; WiFi Vault sekaligus.</div></div>
+  <div id="searchResults"><div class="sr-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Ketik untuk mencari di Data Jaringan &amp; WiFi Vault sekaligus.</div></div>
 </div>
 
 <!-- ===== MAIN CONTENT ===== -->
@@ -748,7 +751,7 @@ function clearSearchHistory(){
 function renderSearchHistory(){
   const hist = getSearchHistory();
   if(hist.length === 0){
-    searchResults.innerHTML = '<div class="sr-empty">Ketik untuk mencari di Data Jaringan &amp; WiFi Vault sekaligus.</div>';
+    searchResults.innerHTML = '<div class="sr-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Ketik untuk mencari di Data Jaringan &amp; WiFi Vault sekaligus.</div>';
     return;
   }
   searchResults.innerHTML = `
@@ -792,7 +795,7 @@ function doGlobalSearch(q, fromHistoryClick){
   }).slice(0, 20);
 
   if(jMatches.length === 0 && wMatches.length === 0){
-    searchResults.innerHTML = '<div class="sr-empty">Tidak ada hasil yang cocok.</div>';
+    searchResults.innerHTML = '<div class="sr-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.5 3a6.5 6.5 0 104.06 11.59l4.2 4.2 1.42-1.4-4.2-4.2A6.5 6.5 0 009.5 3zm0 2a4.5 4.5 0 110 9 4.5 4.5 0 010-9z"/><path d="M7 9h5" stroke-linecap="round"/></svg>Tidak ada hasil yang cocok.</div>';
     return;
   }
 
@@ -937,7 +940,7 @@ function openHubSettings(){
       </div>
     </div>
 
-    <button type="button" class="btn-full-secondary" id="closeHubSettingsBtn">Tutup</button>
+    <button type="button" class="btn-ghost" id="closeHubSettingsBtn">Tutup</button>
   `);
   overlay.querySelectorAll('[data-theme-choice]').forEach(btn => {
     btn.addEventListener('click', () => { setHubThemeMode(btn.dataset.themeChoice); closeModal(overlay); showToast(btn.dataset.themeChoice==='auto' ? 'Tema otomatis diaktifkan (mengikuti jam)' : 'Tema diperbarui'); });
