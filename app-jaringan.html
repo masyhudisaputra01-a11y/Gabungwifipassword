@@ -377,6 +377,7 @@
   .rec-card{ position:relative; }
   .rec-card.bulk-mode{ padding-right:44px; cursor:pointer; }
   .rec-card.bulk-mode .rec-actions{ display:none; }
+  .rec-card.bulk-mode .rec-expand-toggle{ display:none; }
   .rec-card.bulk-mode .copyable{ pointer-events:none; }
   .expiry-banner{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.3); color:#F87171; border-radius:10px; padding:10px 12px; margin:-2px 2px 12px; font-size:12.5px; font-weight:600; }
   .expiry-banner.warn{ background:rgba(251,191,36,.12); border-color:rgba(251,191,36,.35); color:#B8860B; }
@@ -443,6 +444,16 @@
   .status-badge.st-nonaktif{color:var(--danger); background:var(--danger-bg);}
   .status-badge.st-isolir{color:var(--warn); background:var(--warn-bg);}
   .rec-detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);}
+  .rec-collapsible{ display:none; }
+  .rec-collapsible.show{ display:block; animation:collapseIn .2s ease; }
+  @keyframes collapseIn{ from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;} }
+  .rec-expand-toggle{
+    width:100%; margin-top:10px; padding:8px 0; border:none; background:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:5px; color:var(--gold-deep); font-family:inherit;
+    font-size:11.5px; font-weight:700; letter-spacing:.2px;
+  }
+  .rec-expand-toggle svg{ width:14px; height:14px; transition:transform .2s ease; }
+  .rec-expand-toggle.open svg{ transform:rotate(180deg); }
   .rec-detail-grid .dd{font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.3px; font-weight:500;}
   .rec-detail-grid .dd b{display:block; color:var(--ink); font-weight:600; font-size:12.5px; font-family:var(--font-mono); text-transform:none; letter-spacing:0; margin-top:1px;}
   .rec-detail-grid .dd.full{grid-column:1 / -1;}
@@ -2066,6 +2077,24 @@ function sortRecords(list){
 
 let bulkMode = false;
 let bulkSelected = new Set();
+let expandedCards = new Set();
+function toggleCardExpand(id){
+  const btn = document.querySelector(`.rec-expand-toggle[data-toggle-id="${id}"]`);
+  const box = document.querySelector(`.rec-collapsible[data-box-id="${id}"]`);
+  if(!btn || !box) return;
+  const isOpen = expandedCards.has(id);
+  if(isOpen){
+    expandedCards.delete(id);
+    box.classList.remove('show');
+    btn.classList.remove('open');
+    btn.querySelector('span').textContent = 'Lihat Selengkapnya';
+  } else {
+    expandedCards.add(id);
+    box.classList.add('show');
+    btn.classList.add('open');
+    btn.querySelector('span').textContent = 'Sembunyikan';
+  }
+}
 
 function renderData(){
   populateLocFilter();
@@ -2119,6 +2148,11 @@ function renderData(){
         <span class="copyable" onclick="copyField('${escJsAttr(r['Serial Number'])}','Serial Number')">SN: <b>${r['Serial Number']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
         <span>BW: <b>${r['Bandwidth']||'-'}</b></span>
       </div>
+      <button type="button" class="rec-expand-toggle ${expandedCards.has(r._id)?'open':''}" data-toggle-id="${r._id}" onclick="toggleCardExpand('${r._id}')">
+        <span>${expandedCards.has(r._id) ? 'Sembunyikan' : 'Lihat Selengkapnya'}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="rec-collapsible ${expandedCards.has(r._id)?'show':''}" data-box-id="${r._id}">
       <div class="rec-detail-grid">
         <div class="dd full">Jenis Paket<b>${r['Jenis Paket']||'-'}</b></div>
         <div class="dd">Tgl Instalasi<b>${fmtTgl(r['Tanggal Instalasi'])}</b></div>
@@ -2147,6 +2181,7 @@ function renderData(){
         <button onclick="openDetail('${r._id}')">Detail</button>
         <button class="report" onclick="openReportForm('${r._id}')">Lapor</button>
         <button class="danger" onclick="deleteRecord('${r._id}')">Hapus</button>
+      </div>
       </div>
     </div>
   `).join('');
