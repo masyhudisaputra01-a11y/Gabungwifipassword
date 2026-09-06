@@ -140,6 +140,16 @@
   .icon-btn:disabled{opacity:.35; cursor:not-allowed;}
   .wc-note{font-size:12px; color:var(--ink-faint); margin-top:8px; font-style:italic;}
   .wc-toolbar{display:flex; gap:6px; margin-top:11px; flex-wrap:wrap;}
+  .wc-collapsible{ display:none; }
+  .wc-collapsible.show{ display:block; animation:wcCollapseIn .2s ease; }
+  @keyframes wcCollapseIn{ from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;} }
+  .wc-expand-toggle{
+    width:100%; margin-top:10px; padding:8px 0; border:none; background:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:5px; color:var(--gold-deep); font-family:inherit;
+    font-size:11.5px; font-weight:700; letter-spacing:.2px;
+  }
+  .wc-expand-toggle svg{ width:14px; height:14px; transition:transform .2s ease; }
+  .wc-expand-toggle.open svg{ transform:rotate(180deg); }
   .wc-toolbar .icon-btn{width:auto; padding:0 10px; height:32px; gap:5px; font-size:11.5px; font-weight:600; color:var(--ink-soft);}
   .wc-toolbar .icon-btn.danger{color:var(--danger); border-color:rgba(248,113,113,.3);}
   .wc-toolbar .icon-btn.qr{color:var(--gold-soft); border-color:rgba(34,211,238,.3);}
@@ -630,8 +640,13 @@ function wifiCardHtml(r){
       <button class="icon-btn act-copy" title="Salin password" ${isStaff?'disabled':''}>${ICON_COPY}</button>
     </div>
     ${r.catatan ? `<div class="wc-note">${escapeHtml(r.catatan)}</div>` : ''}
-    ${r.updatedBy ? `<div class="wc-note" style="opacity:.7; font-size:10.5px;">Diperbarui oleh ${escapeHtml(r.updatedBy)}${r.updatedAt ? ' · '+new Date(r.updatedAt).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : ''}</div>` : ''}
-    ${!isStaff ? `
+    ${!isStaff && !bulkOn ? `
+    <button type="button" class="wc-expand-toggle ${wvExpandedCards.has(r.id)?'open':''}" data-toggle-id="${r.id}" onclick="toggleWvCardExpand('${r.id}')">
+      <span>${wvExpandedCards.has(r.id) ? 'Sembunyikan' : 'Lihat Selengkapnya'}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="wc-collapsible ${wvExpandedCards.has(r.id)?'show':''}" data-box-id="${r.id}">
+    ${(r.createdBy || r.updatedBy) ? `<div class="wc-note" style="opacity:.7; font-size:10.5px;">${r.createdBy ? ('Dibuat oleh '+escapeHtml(r.createdBy)) : ''}${r.updatedBy && r.updatedBy !== r.createdBy ? (r.createdBy ? ' · ' : '') + 'Diperbarui oleh '+escapeHtml(r.updatedBy) : ''}${r.updatedAt ? ' · '+new Date(r.updatedAt).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : ''}</div>` : ''}
     <div class="wc-toolbar">
       <button class="icon-btn act-pin ${r.pinned?'on':''}" title="Favorit">${ICON_STAR(!!r.pinned)}</button>
       <button class="icon-btn act-copyall" title="Salin semua">${ICON_COPYALL} Salin</button>
@@ -641,9 +656,11 @@ function wifiCardHtml(r){
       <button class="icon-btn act-print" title="Cetak label">${ICON_PRINT} Cetak</button>
       <button class="icon-btn act-edit" title="Edit">${ICON_EDIT} Edit</button>
       <button class="icon-btn danger act-delete" title="Hapus">${ICON_TRASH} Hapus</button>
-    </div>` : `
+    </div>
+    </div>` : ''}
+    ${isStaff ? `
     <div class="wc-toolbar"><button class="icon-btn act-copyssid" title="Salin SSID">${ICON_COPYALL} Salin SSID</button></div>
-    `}
+    ` : ''}
   </div>`;
 }
 
@@ -677,7 +694,7 @@ function refreshCurrentView(){
 /* ================= DUPLIKAT ================= */
 function duplicateWifiRecord(rec){
   if(currentRole === 'staff'){ showToast('Hanya Admin yang bisa menduplikat data'); return; }
-  const copy = { ...rec, id: uid(), ssid: (rec.ssid||'') + ' (Salinan)', pinned:false, passwordHistory:[], updatedAt: new Date().toISOString(), updatedBy: getUsername() };
+  const copy = { ...rec, id: uid(), ssid: (rec.ssid||'') + ' (Salinan)', pinned:false, passwordHistory:[], createdBy: getUsername(), updatedAt: new Date().toISOString(), updatedBy: getUsername() };
   records.push(copy);
   saveRecords();
   logActivity('Duplikat WiFi', copy.ssid);
@@ -827,6 +844,24 @@ function closeWifiQrScanner(){
 
 /* ================= BULK ACTIONS ================= */
 let wifiBulkMode = false;
+let wvExpandedCards = new Set();
+function toggleWvCardExpand(id){
+  const btn = document.querySelector(`.wc-expand-toggle[data-toggle-id="${id}"]`);
+  const box = document.querySelector(`.wc-collapsible[data-box-id="${id}"]`);
+  if(!btn || !box) return;
+  const isOpen = wvExpandedCards.has(id);
+  if(isOpen){
+    wvExpandedCards.delete(id);
+    box.classList.remove('show');
+    btn.classList.remove('open');
+    btn.querySelector('span').textContent = 'Lihat Selengkapnya';
+  } else {
+    wvExpandedCards.add(id);
+    box.classList.add('show');
+    btn.classList.add('open');
+    btn.querySelector('span').textContent = 'Sembunyikan';
+  }
+}
 let wifiBulkSelected = new Set();
 function toggleWifiBulkMode(){
   wifiBulkMode = !wifiBulkMode;
@@ -999,7 +1034,7 @@ function openFormModal(rec, prefillData){
       Object.assign(rec, data);
       logActivity('Edit WiFi', ssid);
     } else {
-      data.id = uid(); data.pinned = false; data.passwordHistory = [];
+      data.id = uid(); data.pinned = false; data.passwordHistory = []; data.createdBy = getUsername();
       records.push(data);
       logActivity('Tambah WiFi', ssid);
     }
@@ -1126,7 +1161,7 @@ function importExcel(e){
           id: uid(), ssid: String(ssid), password: String(row['Password']||''),
           security: row['Keamanan'] || 'WPA2', band: row['Band'] || '2.4GHz',
           lokasi: row['Lokasi'] || '', catatan: row['Catatan'] || '',
-          pinned:false, passwordHistory:[], updatedAt:new Date().toISOString(), updatedBy:getUsername()
+          pinned:false, passwordHistory:[], createdBy:getUsername(), updatedAt:new Date().toISOString(), updatedBy:getUsername()
         });
         added++;
       });
