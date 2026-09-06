@@ -3323,6 +3323,16 @@ window.addEventListener('offline', updateOfflineBanner);
 
 /* ---------------- INIT ---------------- */
 loadRecords();
+
+/* Migrasi: isi "Ditambahkan Oleh" untuk data lama yang belum punya, pakai "Diubah Oleh" sebagai perkiraan terbaik */
+(function migrateCreatedByFallback(){
+  let changed = false;
+  records.forEach(r => {
+    if(!r['Ditambahkan Oleh'] && r['Diubah Oleh']){ r['Ditambahkan Oleh'] = r['Diubah Oleh']; changed = true; }
+  });
+  if(changed) saveRecords();
+})();
+
 tickClock();
 applyTextSize(currentTextSize());
 renderDashboard();

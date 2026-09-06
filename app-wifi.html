@@ -333,6 +333,15 @@ function saveRecords(){
 }
 
 let records = loadRecords();
+
+/* Migrasi: isi "Dibuat oleh" untuk data lama yang belum punya, pakai "Diperbarui oleh" sebagai perkiraan terbaik */
+(function migrateCreatedByFallback(){
+  let changed = false;
+  records.forEach(r => {
+    if(!r.createdBy && r.updatedBy){ r.createdBy = r.updatedBy; changed = true; }
+  });
+  if(changed) saveRecords();
+})();
 let dataFilter = { search:'', band:'all', groupByLocation:false };
 let revealed = {};
 let currentRole = 'admin'; // 'admin' | 'staff' — becomes 'staff' only if unlocked with staff PIN
