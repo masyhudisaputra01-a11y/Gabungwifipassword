@@ -151,6 +151,55 @@
   .r-alert svg{ width:16px; height:16px; flex-shrink:0; margin-top:1px; }
   .r-empty{ text-align:center; padding:30px 10px; color:var(--ink-faint); font-size:13px; }
 
+  /* ===== RINGKASAN: elemen baru ===== */
+  .r-user-badge{ display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--gold-soft); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:99px; padding:4px 10px 4px 4px; margin-top:10px; position:relative; z-index:1; }
+  .r-user-badge .av{ width:18px; height:18px; border-radius:50%; background:var(--gold); color:#04121A; font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+  .r-quick-actions{ display:flex; gap:8px; margin:14px 0 4px; }
+  .r-qa-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 6px; border-radius:var(--radius-sm);
+    background:var(--card); border:1px solid var(--line); color:var(--ink); cursor:pointer; font-family:inherit;
+  }
+  .r-qa-btn:active{ transform:scale(.97); background:var(--card-alt); }
+  .r-qa-btn svg{ width:19px; height:19px; color:var(--gold-deep); }
+  .r-qa-btn span{ font-size:10.5px; font-weight:700; text-align:center; line-height:1.25; }
+
+  .r-breakdown{ display:flex; gap:8px; flex-wrap:wrap; }
+  .r-bd-pill{ flex:1; min-width:90px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 11px; }
+  .r-bd-pill .n{ font-size:17px; font-weight:700; font-family:var(--font-display); }
+  .r-bd-pill .l{ font-size:10.5px; color:var(--ink-soft); display:flex; align-items:center; gap:5px; margin-top:2px; }
+  .r-bd-dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+  .r-progress-card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:13px 14px; }
+  .r-progress-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .r-progress-top b{ font-size:13.5px; }
+  .r-progress-top span{ font-size:12px; color:var(--ink-soft); }
+  .r-progress-bar{ height:7px; border-radius:99px; background:var(--line-soft); overflow:hidden; }
+  .r-progress-bar > div{ height:100%; background:linear-gradient(90deg, var(--gold-deep), var(--gold)); border-radius:99px; transition:width .3s ease; }
+
+  .r-backup-card{ display:flex; flex-direction:column; gap:9px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:13px 14px; }
+  .r-backup-row{ display:flex; align-items:center; justify-content:space-between; font-size:12.5px; }
+  .r-backup-row .lbl{ display:flex; align-items:center; gap:7px; color:var(--ink-soft); }
+  .r-backup-row .lbl svg{ width:15px; height:15px; flex-shrink:0; }
+  .r-backup-row .val{ font-weight:700; color:var(--ink); }
+  .r-backup-row .val.stale{ color:var(--danger); }
+  .r-backup-row .val.ok{ color:var(--ok); }
+
+  .r-activity-list{ display:flex; flex-direction:column; gap:2px; }
+  .r-activity-item{ display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--line-soft); }
+  .r-activity-item:last-child{ border-bottom:none; }
+  .r-activity-src{ width:6px; border-radius:99px; flex-shrink:0; align-self:stretch; }
+  .r-activity-body{ flex:1; min-width:0; }
+  .r-activity-body .act{ font-size:12.5px; font-weight:600; }
+  .r-activity-body .det{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
+  .r-activity-meta{ font-size:10.5px; color:var(--ink-faint); flex-shrink:0; text-align:right; white-space:nowrap; }
+
+  .r-trash-nudge{ display:flex; align-items:center; gap:10px; background:var(--warn-bg); border:1px solid rgba(251,191,36,.3); border-radius:var(--radius-sm); padding:11px 12px; font-size:12.5px; color:var(--warn); cursor:pointer; }
+  .r-trash-nudge svg{ width:17px; height:17px; flex-shrink:0; }
+
+  .r-storage-bar{ height:6px; border-radius:99px; background:var(--line-soft); overflow:hidden; margin-top:8px; }
+  .r-storage-bar > div{ height:100%; border-radius:99px; transition:width .3s ease; }
+
   /* ===== SEARCH ===== */
   #searchOverlay{
     position:fixed; inset:0; background:rgba(4,6,10,.78); z-index:80; display:flex; flex-direction:column;
@@ -628,6 +677,80 @@ function getWifiSummary(){
     return { total: records.length, locCount: locs.size };
   }catch(e){ return { total:0, locCount:0 }; }
 }
+
+/* ---- Helper baru untuk elemen tambahan Ringkasan ---- */
+function getJaringanBreakdown(){
+  try{
+    const raw = localStorage.getItem('sj_records_v1');
+    const records = raw ? JSON.parse(raw) : [];
+    const status = { AKTIF:0, NONAKTIF:0, ISOLIR:0 };
+    const prio = { 'PRIORITAS 1':0, 'PRIORITAS 2':0, 'PRIORITAS 3':0 };
+    let verified = 0;
+    records.forEach(r => {
+      const st = String(r['Status Kontrak']||'').toUpperCase();
+      if(status[st] !== undefined) status[st]++;
+      const p = String(r['Prioritas']||'').toUpperCase();
+      if(prio[p] !== undefined) prio[p]++;
+      if(r['Diverifikasi Pada']) verified++;
+    });
+    return { status, prio, verified, total: records.length };
+  }catch(e){ return { status:{AKTIF:0,NONAKTIF:0,ISOLIR:0}, prio:{'PRIORITAS 1':0,'PRIORITAS 2':0,'PRIORITAS 3':0}, verified:0, total:0 }; }
+}
+function getCurrentUsername(){
+  try{
+    const sj = localStorage.getItem('sj_username_v1');
+    if(sj) return sj;
+    const wv = localStorage.getItem('wv_username_v1');
+    if(wv) return wv;
+  }catch(e){}
+  return 'Pengguna';
+}
+function getBackupStatus(){
+  const out = { sjLast:null, wvLast:null, autoInterval:'0' };
+  try{ out.sjLast = localStorage.getItem('sj_gdrive_last_backup'); }catch(e){}
+  try{ out.wvLast = localStorage.getItem('wv_gdrive_last_v1'); }catch(e){}
+  try{ out.autoInterval = localStorage.getItem('sj_auto_backup_interval_v1') || '0'; }catch(e){}
+  return out;
+}
+function fmtRelativeTime(iso){
+  if(!iso) return null;
+  const then = new Date(iso).getTime();
+  if(isNaN(then)) return null;
+  const diffMs = Date.now() - then;
+  const day = 86400000;
+  if(diffMs < 3600000) return 'Baru saja';
+  if(diffMs < day) return Math.floor(diffMs/3600000) + ' jam lalu';
+  const days = Math.floor(diffMs/day);
+  if(days === 1) return 'Kemarin';
+  if(days < 7) return days + ' hari lalu';
+  if(days < 30) return Math.floor(days/7) + ' minggu lalu';
+  return new Date(iso).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'});
+}
+function getMergedActivity(limit){
+  let sjLog = [], wvLog = [];
+  try{ sjLog = JSON.parse(localStorage.getItem('sj_audit_log_v1') || '[]').map(l => ({...l, src:'jaringan'})); }catch(e){}
+  try{ wvLog = JSON.parse(localStorage.getItem('wv_activity_log_v1') || '[]').map(l => ({...l, src:'wifi'})); }catch(e){}
+  return [...sjLog, ...wvLog].sort((a,b) => new Date(b.ts) - new Date(a.ts)).slice(0, limit);
+}
+function getTrashCounts(){
+  let sj = 0, wv = 0;
+  try{ sj = JSON.parse(localStorage.getItem('sj_trash_v1') || '[]').length; }catch(e){}
+  try{ wv = JSON.parse(localStorage.getItem('wv_trash_v1') || '[]').length; }catch(e){}
+  return { sj, wv, total: sj + wv };
+}
+function estimateStorageUsage(){
+  let bytes = 0;
+  try{
+    for(let i=0; i<localStorage.length; i++){
+      const k = localStorage.key(i);
+      const v = localStorage.getItem(k) || '';
+      bytes += (k.length + v.length) * 2; // UTF-16 ≈ 2 byte/karakter
+    }
+  }catch(e){}
+  const limitBytes = 5 * 1024 * 1024; // asumsi konservatif 5MB (batas minimum umum browser)
+  const pct = Math.min(100, (bytes / limitBytes) * 100);
+  return { bytes, pct, mb: (bytes/1024/1024) };
+}
 function refreshBadges(){
   const js = getJaringanSummary();
   const badge = document.getElementById('badgeJaringan');
@@ -647,6 +770,12 @@ function renderRingkasan(){
   const js = getJaringanSummary();
   const ws = getWifiSummary();
   const urgent = (js.overdue||0) + (js.soon||0);
+  const bd = getJaringanBreakdown();
+  const username = getCurrentUsername();
+  const backup = getBackupStatus();
+  const trash = getTrashCounts();
+  const activity = getMergedActivity(6);
+  const storage = estimateStorageUsage();
 
   let alerts = '';
   if(js.overdue > 0){
@@ -662,10 +791,30 @@ function renderRingkasan(){
     </div>`;
   }
 
+  const sjLastRel = fmtRelativeTime(backup.sjLast);
+  const wvLastRel = fmtRelativeTime(backup.wvLast);
+  const autoLabel = backup.autoInterval === 'daily' ? 'Setiap hari' : (backup.autoInterval === 'weekly' ? 'Setiap minggu' : 'Nonaktif');
+
+  const verifiedPct = bd.total > 0 ? Math.round((bd.verified / bd.total) * 100) : 0;
+
+  const activityHtml = activity.length === 0 ? `
+    <div class="r-empty">Belum ada aktivitas tercatat.</div>
+  ` : activity.map(a => `
+    <div class="r-activity-item">
+      <div class="r-activity-src" style="background:${a.src==='jaringan' ? 'var(--gold-deep)' : '#818CF8'};"></div>
+      <div class="r-activity-body">
+        <div class="act">${a.action}${a.detail ? ' — '+a.detail : ''}</div>
+        <div class="det">${a.src==='jaringan' ? 'Data Jaringan' : 'WiFi Vault'} · oleh ${a.user||'Pengguna'}</div>
+      </div>
+      <div class="r-activity-meta">${fmtRelativeTime(a.ts)||''}</div>
+    </div>
+  `).join('');
+
   paneRingkasan.innerHTML = `
     <div class="r-hero">
       <div class="r-hero-title">Ringkasan Sistem</div>
       <div class="r-hero-sub">Data Jaringan &amp; WiFi Vault — Polda Sulawesi Barat</div>
+      <div class="r-user-badge"><span class="av">${username.charAt(0).toUpperCase()}</span>Masuk sebagai ${username}</div>
       <div class="r-stats">
         <div class="r-stat" id="statTotal"><b>${js.total + ws.total}</b><span>Total Data</span></div>
         <div class="r-stat" id="statLokasi"><b>${js.locCount||0}</b><span>Lokasi Jaringan</span></div>
@@ -674,6 +823,39 @@ function renderRingkasan(){
     </div>
 
     ${alerts}
+
+    <div class="r-quick-actions">
+      <button type="button" class="r-qa-btn" id="qaAddJaringan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
+        <span>Tambah Data<br>Jaringan</span>
+      </button>
+      <button type="button" class="r-qa-btn" id="qaAddWifi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
+        <span>Tambah<br>WiFi</span>
+      </button>
+      <button type="button" class="r-qa-btn" id="qaSearch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+        <span>Cari<br>Data</span>
+      </button>
+    </div>
+
+    <div class="r-section-title">Status &amp; Prioritas Jaringan</div>
+    <div class="r-breakdown" style="margin-bottom:14px;">
+      <div class="r-bd-pill"><div class="n">${bd.status.AKTIF}</div><div class="l"><span class="r-bd-dot" style="background:#34D399;"></span>Aktif</div></div>
+      <div class="r-bd-pill"><div class="n">${bd.status.NONAKTIF}</div><div class="l"><span class="r-bd-dot" style="background:#F87171;"></span>Nonaktif</div></div>
+      <div class="r-bd-pill"><div class="n">${bd.status.ISOLIR}</div><div class="l"><span class="r-bd-dot" style="background:#FBBF24;"></span>Isolir</div></div>
+    </div>
+    <div class="r-breakdown">
+      <div class="r-bd-pill"><div class="n">${bd.prio['PRIORITAS 1']}</div><div class="l"><span class="r-bd-dot" style="background:#F87171;"></span>Prioritas 1</div></div>
+      <div class="r-bd-pill"><div class="n">${bd.prio['PRIORITAS 2']}</div><div class="l"><span class="r-bd-dot" style="background:#FB923C;"></span>Prioritas 2</div></div>
+      <div class="r-bd-pill"><div class="n">${bd.prio['PRIORITAS 3']}</div><div class="l"><span class="r-bd-dot" style="background:#818CF8;"></span>Prioritas 3</div></div>
+    </div>
+
+    <div class="r-section-title">Progres Verifikasi Data</div>
+    <div class="r-progress-card" id="cardVerifProgress">
+      <div class="r-progress-top"><b>${bd.verified} dari ${bd.total} data</b><span>${verifiedPct}%</span></div>
+      <div class="r-progress-bar"><div style="width:${verifiedPct}%;"></div></div>
+    </div>
 
     <div class="r-section-title">Modul</div>
     <div class="r-cards">
@@ -698,12 +880,59 @@ function renderRingkasan(){
         <div class="r-card-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       </div>
     </div>
+
+    <div class="r-section-title">Cadangan Data</div>
+    <div class="r-backup-card">
+      <div class="r-backup-row">
+        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="5" cy="5" r="2" fill="currentColor" stroke="none"/><circle cx="19" cy="5" r="2" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="2" fill="currentColor" stroke="none"/><path d="M6.4 6.2L11 17.3M17.6 6.2L13 17.3M7 5H17" stroke-linecap="round"/></svg>Data Jaringan</div>
+        <div class="val ${!backup.sjLast ? 'stale' : ''}">${sjLastRel || 'Belum pernah'}</div>
+      </div>
+      <div class="r-backup-row">
+        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 19.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" fill="currentColor" stroke="none"/><path d="M8.3 13.6a5.2 5.2 0 017.4 0" stroke-linecap="round"/></svg>WiFi Vault</div>
+        <div class="val ${!backup.wvLast ? 'stale' : ''}">${wvLastRel || 'Belum pernah'}</div>
+      </div>
+      <div class="r-backup-row">
+        <div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2" stroke-linecap="round"/></svg>Backup Otomatis</div>
+        <div class="val ${backup.autoInterval==='0' ? '' : 'ok'}">${autoLabel}</div>
+      </div>
+    </div>
+
+    ${trash.total > 0 ? `
+    <div class="r-trash-nudge" id="trashNudge" style="margin-top:12px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z"/></svg>
+      <div>${trash.total} data ada di Tempat Sampah (${trash.sj} Jaringan, ${trash.wv} WiFi) — ketuk untuk kelola.</div>
+    </div>` : ''}
+
+    <div class="r-section-title">Aktivitas Terbaru</div>
+    <div class="r-activity-list">${activityHtml}</div>
+
+    <div style="margin-top:16px; padding:0 2px;">
+      <div style="display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-faint); margin-bottom:4px;">
+        <span>Penyimpanan perangkat</span><span>${storage.mb.toFixed(1)} MB terpakai</span>
+      </div>
+      <div class="r-storage-bar"><div style="width:${storage.pct}%; background:${storage.pct>80?'#F87171':(storage.pct>50?'#FBBF24':'var(--gold-deep)')};"></div></div>
+    </div>
   `;
   document.getElementById('cardJaringan').addEventListener('click', () => activate('jaringan'));
   document.getElementById('cardWifi').addEventListener('click', () => activate('wifi'));
   document.getElementById('statTotal').addEventListener('click', () => activate('jaringan'));
+  document.getElementById('qaAddJaringan').addEventListener('click', () => quickAdd('jaringan'));
+  document.getElementById('qaAddWifi').addEventListener('click', () => quickAdd('wifi'));
+  document.getElementById('qaSearch').addEventListener('click', () => document.getElementById('searchOpenBtn').click());
+  const tn = document.getElementById('trashNudge'); if(tn) tn.addEventListener('click', openHubSettings);
   const so = document.getElementById('alertOverdue'); if(so) so.addEventListener('click', () => jumpToExpiring('overdue'));
   const ss = document.getElementById('alertSoon'); if(ss) ss.addEventListener('click', () => jumpToExpiring('soon'));
+}
+function quickAdd(app){
+  activate(app);
+  const tryJump = () => {
+    try{
+      const win = app === 'jaringan' ? ifJaringan.contentWindow : ifWifi.contentWindow;
+      if(win && win.hubGoToAdd){ win.hubGoToAdd(); return; }
+    }catch(e){}
+    setTimeout(tryJump, 150);
+  };
+  setTimeout(tryJump, 200);
 }
 function jumpToExpiring(kind){
   activate('jaringan');

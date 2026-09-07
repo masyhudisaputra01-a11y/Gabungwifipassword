@@ -1277,6 +1277,9 @@ window.hubGoToExpiring = function(kind){
   state.expiry = kind === 'overdue' ? 'OVERDUE' : 'SOON30';
   renderData();
 };
+window.hubGoToAdd = function(){
+  document.querySelector('button[data-view="add"]').click();
+};
 window.hubGetSummary = function(){
   const overdue = records.filter(r=>{ const d = daysUntil(r['Tanggal Berakhir Kontrak']); return d !== null && d < 0; }).length;
   const soon = records.filter(r=>{ const d = daysUntil(r['Tanggal Berakhir Kontrak']); return d !== null && d >= 0 && d <= 30; }).length;

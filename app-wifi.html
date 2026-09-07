@@ -483,6 +483,9 @@ window.hubGoToSearch = function(query){
   if(inp) inp.value = query || '';
   renderWifiList();
 };
+window.hubGoToAdd = function(){
+  openAddChoiceModal();
+};
 window.hubGetSummary = function(){
   const locs = new Set(records.map(r => (r.lokasi||'').trim()).filter(Boolean));
   return { total: records.length, locCount: locs.size };
