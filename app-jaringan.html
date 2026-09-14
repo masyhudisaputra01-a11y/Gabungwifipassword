@@ -808,6 +808,7 @@
     <select class="loc-filter" id="locFilter"><option value="ALL">Semua Lokasi</option></select>
     <select class="loc-filter" id="odpFilter" style="margin-top:6px;"><option value="ALL">Semua ODP</option></select>
     <select class="loc-filter" id="paketFilter" style="margin-top:6px;"><option value="ALL">Semua Jenis Paket</option></select>
+    <select class="loc-filter" id="bwFilter" style="margin-top:6px;"><option value="ALL">Semua Bandwidth</option></select>
     <select class="loc-filter" id="sortSelect" style="margin-top:6px;">
       <option value="default">Urutkan: Terbaru Diubah</option>
       <option value="nama_asc">Nama Ruangan (A-Z)</option>
@@ -1018,7 +1019,7 @@ const LOCATIONS = ["BRIMOB MAMUJU","BRIMOB POLMAN","GEDUNG BHAYANGKARI","GEDUNG 
 
 const STORE_KEY = 'sj_records_v1';
 let records = [];
-let state = { search:'', prio:'ALL', loc:'ALL', odp:'ALL', paket:'ALL', status:'ALL', expiry:'ALL', sortBy:'default' };
+let state = { search:'', prio:'ALL', loc:'ALL', odp:'ALL', paket:'ALL', bw:'ALL', status:'ALL', expiry:'ALL', sortBy:'default' };
 
 /* ---------------- KUMPULAN IKON (SVG line-icon, konsisten dgn gaya app) ---------------- */
 const ICON_INSTALL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
@@ -2053,6 +2054,17 @@ function populatePaketFilter(){
   const uniq = [...new Set(records.map(r=>r['Jenis Paket']).filter(Boolean))].sort();
   sel.innerHTML = '<option value="ALL">Semua Jenis Paket</option>' + uniq.map(p=>`<option value="${p}">${p}</option>`).join('');
 }
+function populateBwFilter(){
+  const sel = document.getElementById('bwFilter');
+  if(!sel) return;
+  const uniq = [...new Set(records.map(r=>r['Bandwidth']).filter(Boolean))].sort((a,b)=>{
+    const na = parseFloat(String(a).replace(',','.'));
+    const nb = parseFloat(String(b).replace(',','.'));
+    if(!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+    return String(a).localeCompare(String(b));
+  });
+  sel.innerHTML = '<option value="ALL">Semua Bandwidth</option>' + uniq.map(b=>`<option value="${b}">${b}</option>`).join('');
+}
 function populatePicDatalist(){
   const dl = document.getElementById('picDatalist');
   if(!dl) return;
@@ -2090,6 +2102,10 @@ document.getElementById('paketFilter').addEventListener('change', e=>{
   state.paket = e.target.value;
   renderData();
 });
+document.getElementById('bwFilter').addEventListener('change', e=>{
+  state.bw = e.target.value;
+  renderData();
+});
 document.getElementById('sortSelect').addEventListener('change', e=>{
   state.sortBy = e.target.value;
   renderData();
@@ -2110,6 +2126,7 @@ function filteredRecords(){
     if(state.loc !== 'ALL' && r['Lokasi'] !== state.loc) return false;
     if(state.odp !== 'ALL' && r['ODP'] !== state.odp) return false;
     if(state.paket !== 'ALL' && r['Jenis Paket'] !== state.paket) return false;
+    if(state.bw !== 'ALL' && r['Bandwidth'] !== state.bw) return false;
     if(state.status !== 'ALL' && String(r['Status Kontrak']||'').toUpperCase() !== state.status) return false;
     if(state.expiry !== 'ALL'){
       const d = daysUntil(r['Tanggal Berakhir Kontrak']);
@@ -2172,11 +2189,13 @@ function renderData(){
   populateLocFilter();
   populateOdpFilter();
   populatePaketFilter();
+  populateBwFilter();
   populatePicDatalist();
   populateOdpDatalist();
   document.getElementById('locFilter').value = state.loc;
   document.getElementById('odpFilter').value = state.odp;
   document.getElementById('paketFilter').value = state.paket;
+  document.getElementById('bwFilter').value = state.bw;
   document.getElementById('sortSelect').value = state.sortBy || 'default';
   const list = sortRecords(filteredRecords());
   document.getElementById('resultCount').textContent = `${list.length} hasil dari ${records.length} data`;
