@@ -1664,6 +1664,21 @@ function normalizeBandwidth(val){
   const unitMap = { mbps:'Mbps', gbps:'Gbps', kbps:'Kbps' };
   return `${num} ${unitMap[unit]}`;
 }
+function normalizeOdp(val){
+  if(!val) return val;
+  return String(val).trim().replace(/\s+/g,' ').toUpperCase();
+}
+function normalizeJenisPaket(val){
+  if(!val) return val;
+  let str = String(val).trim().replace(/\s+/g,' ').toUpperCase();
+  str = str.replace(/\s*\+\s*/g, ' + ');
+  return str;
+}
+function normalizePicName(val){
+  if(!val) return val;
+  const str = String(val).trim().replace(/\s+/g,' ');
+  return str.split(' ').map(w => w.length ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w).join(' ');
+}
 function daysUntil(dateStr){
   if(!dateStr) return null;
   const d = new Date(dateStr);
@@ -2455,6 +2470,9 @@ function openDetail(id){
     }
     fields.forEach(f=>{ r[f] = fd.get(f); });
     r['Bandwidth'] = normalizeBandwidth(r['Bandwidth']);
+    r['ODP'] = normalizeOdp(r['ODP']);
+    r['Jenis Paket'] = normalizeJenisPaket(r['Jenis Paket']);
+    r['PIC/Teknisi'] = normalizePicName(r['PIC/Teknisi']);
     r['Diubah Oleh'] = getUsername();
     r['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
     saveRecords();
@@ -2993,6 +3011,9 @@ document.getElementById('addForm').addEventListener('submit', e=>{
   const rec = { _id: 'r_'+Date.now() };
   fd.forEach((v,k)=>{ rec[k]=v; });
   rec['Bandwidth'] = normalizeBandwidth(rec['Bandwidth']);
+  rec['ODP'] = normalizeOdp(rec['ODP']);
+  rec['Jenis Paket'] = normalizeJenisPaket(rec['Jenis Paket']);
+  rec['PIC/Teknisi'] = normalizePicName(rec['PIC/Teknisi']);
   rec['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
   rec['Ditambahkan Oleh'] = getUsername();
   rec['Diubah Oleh'] = getUsername();
@@ -3310,12 +3331,18 @@ document.getElementById('importExcelInput').addEventListener('change', e=>{
         if(target){
           IMPORT_FIELDS.forEach(f=>{ if(row[f] !== undefined && row[f] !== '') target[f] = row[f]; });
           target['Bandwidth'] = normalizeBandwidth(target['Bandwidth']);
+          target['ODP'] = normalizeOdp(target['ODP']);
+          target['Jenis Paket'] = normalizeJenisPaket(target['Jenis Paket']);
+          target['PIC/Teknisi'] = normalizePicName(target['PIC/Teknisi']);
           target['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
           updated++;
         } else {
           const rec = { _id: 'imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7) };
           IMPORT_FIELDS.forEach(f=>{ rec[f] = row[f] !== undefined ? row[f] : ''; });
           rec['Bandwidth'] = normalizeBandwidth(rec['Bandwidth']);
+          rec['ODP'] = normalizeOdp(rec['ODP']);
+          rec['Jenis Paket'] = normalizeJenisPaket(rec['Jenis Paket']);
+          rec['PIC/Teknisi'] = normalizePicName(rec['PIC/Teknisi']);
           rec['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
           records.push(rec);
           added++;
@@ -3389,6 +3416,20 @@ loadRecords();
   records.forEach(r => {
     const normalized = normalizeBandwidth(r['Bandwidth']);
     if(normalized !== r['Bandwidth']){ r['Bandwidth'] = normalized; changed = true; }
+  });
+  if(changed) saveRecords();
+})();
+
+/* Migrasi: rapikan format ODP, Jenis Paket, dan PIC/Teknisi data lama yang belum konsisten */
+(function migrateTextFieldsFormat(){
+  let changed = false;
+  records.forEach(r => {
+    const odp = normalizeOdp(r['ODP']);
+    if(odp !== r['ODP']){ r['ODP'] = odp; changed = true; }
+    const paket = normalizeJenisPaket(r['Jenis Paket']);
+    if(paket !== r['Jenis Paket']){ r['Jenis Paket'] = paket; changed = true; }
+    const pic = normalizePicName(r['PIC/Teknisi']);
+    if(pic !== r['PIC/Teknisi']){ r['PIC/Teknisi'] = pic; changed = true; }
   });
   if(changed) saveRecords();
 })();
