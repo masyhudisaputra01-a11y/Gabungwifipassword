@@ -1654,6 +1654,16 @@ function openPinManager(){
 }
 
 /* ---------------- PERINGATAN: KONTRAK & DATA TIDAK LENGKAP ---------------- */
+function normalizeBandwidth(val){
+  if(!val) return val;
+  const str = String(val).trim();
+  const m = str.match(/^(\d+(?:[.,]\d+)?)\s*(mbps|gbps|kbps)?\s*$/i);
+  if(!m) return str; // format tak dikenali (mis. "Unlimited"), biarkan apa adanya
+  const num = m[1];
+  const unit = (m[2] ? m[2].toLowerCase() : 'mbps');
+  const unitMap = { mbps:'Mbps', gbps:'Gbps', kbps:'Kbps' };
+  return `${num} ${unitMap[unit]}`;
+}
 function daysUntil(dateStr){
   if(!dateStr) return null;
   const d = new Date(dateStr);
@@ -2444,6 +2454,7 @@ function openDetail(id){
       }
     }
     fields.forEach(f=>{ r[f] = fd.get(f); });
+    r['Bandwidth'] = normalizeBandwidth(r['Bandwidth']);
     r['Diubah Oleh'] = getUsername();
     r['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
     saveRecords();
@@ -2981,6 +2992,7 @@ document.getElementById('addForm').addEventListener('submit', e=>{
   }
   const rec = { _id: 'r_'+Date.now() };
   fd.forEach((v,k)=>{ rec[k]=v; });
+  rec['Bandwidth'] = normalizeBandwidth(rec['Bandwidth']);
   rec['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
   rec['Ditambahkan Oleh'] = getUsername();
   rec['Diubah Oleh'] = getUsername();
@@ -3297,11 +3309,13 @@ document.getElementById('importExcelInput').addEventListener('change', e=>{
         let target = custId ? records.find(x=> String(x['Customer ID']||'').trim() === custId) : null;
         if(target){
           IMPORT_FIELDS.forEach(f=>{ if(row[f] !== undefined && row[f] !== '') target[f] = row[f]; });
+          target['Bandwidth'] = normalizeBandwidth(target['Bandwidth']);
           target['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
           updated++;
         } else {
           const rec = { _id: 'imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7) };
           IMPORT_FIELDS.forEach(f=>{ rec[f] = row[f] !== undefined ? row[f] : ''; });
+          rec['Bandwidth'] = normalizeBandwidth(rec['Bandwidth']);
           rec['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
           records.push(rec);
           added++;
@@ -3365,6 +3379,16 @@ loadRecords();
   let changed = false;
   records.forEach(r => {
     if(!r['Ditambahkan Oleh'] && r['Diubah Oleh']){ r['Ditambahkan Oleh'] = r['Diubah Oleh']; changed = true; }
+  });
+  if(changed) saveRecords();
+})();
+
+/* Migrasi: rapikan format Bandwidth data lama yang belum konsisten (mis. "50mbps" -> "50 Mbps") */
+(function migrateBandwidthFormat(){
+  let changed = false;
+  records.forEach(r => {
+    const normalized = normalizeBandwidth(r['Bandwidth']);
+    if(normalized !== r['Bandwidth']){ r['Bandwidth'] = normalized; changed = true; }
   });
   if(changed) saveRecords();
 })();
