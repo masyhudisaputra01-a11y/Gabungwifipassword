@@ -349,12 +349,18 @@
   /* ---------- DATA VIEW ---------- */
   .search-wrap{position:relative; margin-bottom:10px;}
   .search-wrap input{
-    width:100%; padding:12px 14px 12px 40px; border-radius:var(--radius-sm); border:1px solid var(--line);
+    width:100%; padding:12px 40px 12px 40px; border-radius:var(--radius-sm); border:1px solid var(--line);
     background:var(--card); font-size:14px; font-family:var(--font-body); color:var(--ink); box-shadow:var(--shadow-sm);
     transition:border-color .15s ease, box-shadow .15s ease;
   }
   .search-wrap input:focus{outline:none; border-color:var(--gold-deep); box-shadow:0 0 0 3px rgba(201,151,76,.18);}
   .search-icon{position:absolute; left:13px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--ink-faint);}
+  .search-clear-btn{ position:absolute; right:8px; top:50%; transform:translateY(-50%); width:26px; height:26px; border:none; background:var(--card-alt); border-radius:50%; color:var(--ink-faint); display:none; align-items:center; justify-content:center; cursor:pointer; }
+  .search-clear-btn.show{ display:flex; }
+  .search-clear-btn:active{ background:var(--paper); }
+  .search-history-row{ display:flex; gap:6px; flex-wrap:wrap; margin:-4px 0 10px; }
+  .search-history-chip{ font-size:11px; padding:5px 10px; border-radius:20px; background:var(--card-alt); border:1px solid var(--line); color:var(--ink-soft); cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+  .search-history-chip svg{ width:10px; height:10px; opacity:.6; }
 
   .chip-row{display:flex; gap:7px; overflow-x:auto; padding-bottom:4px; margin-bottom:8px;}
   .chip{
@@ -364,6 +370,8 @@
   }
   .chip.active{background:var(--gold); border-color:var(--gold); color:#04121A; font-weight:700; box-shadow:var(--shadow-gold);}
   .status-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; display:inline-block; }
+  .group-header{font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:16px 2px 8px; display:flex; align-items:center; gap:6px; text-transform:uppercase; letter-spacing:.4px;}
+  .search-hl{ background:rgba(251,191,36,.35); color:inherit; border-radius:3px; padding:0 1px; font-weight:700; }
   select.loc-filter{
     width:100%; padding:11px 12px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--card);
     font-size:13px; color:var(--ink); margin-bottom:10px; font-family:var(--font-body); box-shadow:var(--shadow-sm);
@@ -406,7 +414,7 @@
   #recordList .rec-card:nth-child(n+11), #allDataList .rec-card:nth-child(n+11){ animation-delay:0.38s; }
   .rec-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
   .rec-name{font-weight:700; font-size:15px; color:var(--ink); letter-spacing:-.1px;}
-  .rec-tag{font-size:9.5px; font-weight:700; padding:3px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; flex:none; color:#fff; box-shadow:0 3px 8px -3px rgba(11,31,58,.4);}
+  .rec-tag{font-size:9.5px; font-weight:700; padding:3px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; flex:none; color:#fff; box-shadow:0 3px 8px -3px rgba(11,31,58,.4); max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .verified-badge{ width:20px; height:20px; border-radius:50%; background:var(--ok, #34D399); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .rec-actions button.verify{ color:#0BA5C4; border-color:rgba(34,211,238,.35); }
   .rec-actions button.verified{ color:#34D399; border-color:rgba(52,211,153,.35); background:rgba(52,211,153,.08); }
@@ -798,12 +806,13 @@
     <div class="search-wrap">
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="searchInput" placeholder="Cari nama ruangan, Customer ID, Serial, Nama WiFi...">
+      <button type="button" class="search-clear-btn" id="searchClearBtn" title="Hapus pencarian">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
+      </button>
     </div>
-    <div class="chip-row" id="prioChips">
-      <button class="chip active" data-prio="ALL">Semua</button>
-      <button class="chip" data-prio="PRIORITAS 1">Prioritas 1</button>
-      <button class="chip" data-prio="PRIORITAS 2">Prioritas 2</button>
-      <button class="chip" data-prio="PRIORITAS 3">Prioritas 3</button>
+    <div class="search-history-row" id="searchHistoryRow" style="display:none;"></div>
+    <div class="chip-row" id="paketChips">
+      <button class="chip active" data-paket="ALL">Semua</button>
     </div>
     <select class="loc-filter" id="locFilter"><option value="ALL">Semua Lokasi</option></select>
     <select class="loc-filter" id="odpFilter" style="margin-top:6px;"><option value="ALL">Semua ODP</option></select>
@@ -822,6 +831,10 @@
       <button class="chip" data-status="AKTIF"><span class="status-dot" style="background:#34D399;"></span>Aktif</button>
       <button class="chip" data-status="NONAKTIF"><span class="status-dot" style="background:#F87171;"></span>Nonaktif</button>
       <button class="chip" data-status="ISOLIR"><span class="status-dot" style="background:#FBBF24;"></span>Isolir</button>
+      <button type="button" class="chip" id="groupLocChip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12" style="vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Kelompokkan Lokasi
+      </button>
     </div>
 
     <div class="action-bar">
@@ -1019,7 +1032,7 @@ const LOCATIONS = ["BRIMOB MAMUJU","BRIMOB POLMAN","GEDUNG BHAYANGKARI","GEDUNG 
 
 const STORE_KEY = 'sj_records_v1';
 let records = [];
-let state = { search:'', prio:'ALL', loc:'ALL', odp:'ALL', paket:'ALL', bw:'ALL', status:'ALL', expiry:'ALL', sortBy:'default' };
+let state = { search:'', loc:'ALL', odp:'ALL', paket:'ALL', bw:'ALL', status:'ALL', expiry:'ALL', sortBy:'default', groupByLocation:false };
 
 /* ---------------- KUMPULAN IKON (SVG line-icon, konsisten dgn gaya app) ---------------- */
 const ICON_INSTALL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="vertical-align:-2px;"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
@@ -1609,12 +1622,12 @@ function jumpFromHeaderStat(kind){
     return;
   }
   document.querySelector('button[data-view="data"]').click();
-  state.prio = 'ALL';
+  state.paket = 'ALL';
   state.status = kind === 'AKTIF' ? 'AKTIF' : 'ALL';
   state.search = '';
   state.loc = 'ALL';
   document.getElementById('searchInput').value = '';
-  document.querySelectorAll('#prioChips .chip').forEach(c=>c.classList.toggle('active', c.dataset.prio==='ALL'));
+  document.querySelectorAll('#paketChips .chip').forEach(c=>c.classList.toggle('active', c.dataset.paket==='ALL'));
   document.querySelectorAll('#statusChips .chip').forEach(c=>c.classList.toggle('active', c.dataset.status===state.status));
   renderData();
 }
@@ -1783,28 +1796,34 @@ function renderDashboard(){
   const ringPct = document.getElementById('heroRingPct');
   if(ringPct) ringPct.textContent = pct + '%';
 
-  const prioGrid = document.getElementById('prioGrid');
-  const prios = ['PRIORITAS 1','PRIORITAS 2','PRIORITAS 3'];
-  prioGrid.innerHTML = prios.map(p=>{
-    const c = records.filter(r=>r['Prioritas']===p).length;
-    return `<div class="stat-card" style="--acc:${prioColor(p)}"><b>${c}</b><span>${p.replace('PRIORITAS ','Prioritas ')}</span></div>`;
+  const paketColors = ['#22D3EE','#818CF8','#34D399','#FB923C','#F87171','#A78BFA'];
+  const paketCountMap = {};
+  records.forEach(r=>{ const p = r['Jenis Paket']||'Tidak diketahui'; paketCountMap[p]=(paketCountMap[p]||0)+1; });
+  let paketEntries = Object.entries(paketCountMap).sort((a,b)=>b[1]-a[1]);
+  if(paketEntries.length > 5){
+    const top = paketEntries.slice(0,4);
+    const rest = paketEntries.slice(4).reduce((s,e)=>s+e[1],0);
+    paketEntries = [...top, ['Lainnya', rest]];
+  }
+  const paketGrid = document.getElementById('prioGrid');
+  paketGrid.innerHTML = paketEntries.map(([p,c],i)=>{
+    return `<div class="stat-card" style="--acc:${paketColors[i % paketColors.length]}"><b>${c}</b><span>${esc(p)}</span></div>`;
   }).join('');
 
   const donutEl = document.getElementById('prioDonut');
   const legendEl = document.getElementById('prioLegend');
   if(donutEl && legendEl){
-    const counts = prios.map(p=> records.filter(r=>r['Prioritas']===p).length);
-    const sum = counts.reduce((a,b)=>a+b,0) || 1;
+    const sum = paketEntries.reduce((a,[,c])=>a+c,0) || 1;
     let acc = 0;
-    const segments = prios.map((p,i)=>{
-      const pct = counts[i]/sum*100;
+    const segments = paketEntries.map(([p,c],i)=>{
+      const pct = c/sum*100;
       const start = acc; acc += pct;
-      return `${prioColor(p)} ${start}% ${acc}%`;
+      return `${paketColors[i % paketColors.length]} ${start}% ${acc}%`;
     });
     donutEl.style.background = sum ? `conic-gradient(${segments.join(',')})` : 'var(--line)';
-    legendEl.innerHTML = prios.map((p,i)=>{
-      const pct = Math.round(counts[i]/sum*100);
-      return `<div class="dl-item"><span class="dl-dot" style="background:${prioColor(p)}"></span>${p.replace('PRIORITAS ','Prioritas ')}<b>${counts[i]} (${pct}%)</b></div>`;
+    legendEl.innerHTML = paketEntries.map(([p,c],i)=>{
+      const pct = Math.round(c/sum*100);
+      return `<div class="dl-item"><span class="dl-dot" style="background:${paketColors[i % paketColors.length]}"></span>${esc(p)}<b>${c} (${pct}%)</b></div>`;
     }).join('');
   }
 
@@ -2079,6 +2098,15 @@ function populatePaketFilter(){
   const uniq = [...new Set(records.map(r=>r['Jenis Paket']).filter(Boolean))].sort();
   sel.innerHTML = '<option value="ALL">Semua Jenis Paket</option>' + uniq.map(p=>`<option value="${p}">${p}</option>`).join('');
 }
+function populatePaketChips(){
+  const row = document.getElementById('paketChips');
+  if(!row) return;
+  const counts = {};
+  records.forEach(r=>{ if(r['Jenis Paket']) counts[r['Jenis Paket']] = (counts[r['Jenis Paket']]||0)+1; });
+  const uniq = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,6);
+  row.innerHTML = `<button class="chip ${state.paket==='ALL'?'active':''}" data-paket="ALL">Semua</button>` +
+    uniq.map(p=>`<button class="chip ${state.paket===p?'active':''}" data-paket="${esc(p)}">${esc(p)}</button>`).join('');
+}
 function populateBwFilter(){
   const sel = document.getElementById('bwFilter');
   if(!sel) return;
@@ -2103,16 +2131,65 @@ function populateOdpDatalist(){
   dl.innerHTML = uniq.map(p=>`<option value="${esc(p)}">`).join('');
 }
 
-document.getElementById('searchInput').addEventListener('input', e=>{
+const SEARCH_HISTORY_KEY_SJ = 'sj_search_history_v1';
+function getSjSearchHistory(){
+  try{ return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY_SJ) || '[]'); }catch(e){ return []; }
+}
+function addSjSearchHistory(q){
+  q = (q||'').trim();
+  if(!q || q.length < 2) return;
+  let hist = getSjSearchHistory().filter(h => h.toLowerCase() !== q.toLowerCase());
+  hist.unshift(q);
+  hist = hist.slice(0, 6);
+  try{ localStorage.setItem(SEARCH_HISTORY_KEY_SJ, JSON.stringify(hist)); }catch(e){}
+}
+function renderSjSearchHistory(){
+  const row = document.getElementById('searchHistoryRow');
+  const hist = getSjSearchHistory();
+  if(hist.length === 0){ row.style.display = 'none'; row.innerHTML=''; return; }
+  row.style.display = 'flex';
+  row.innerHTML = hist.map(h => `<button type="button" class="search-history-chip" data-h="${esc(h)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>${esc(h)}</button>`).join('');
+  row.querySelectorAll('.search-history-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const val = chip.dataset.h;
+      document.getElementById('searchInput').value = val;
+      state.search = val.trim().toLowerCase();
+      document.getElementById('searchClearBtn').classList.add('show');
+      row.style.display = 'none';
+      renderData();
+    });
+  });
+}
+const searchInputEl = document.getElementById('searchInput');
+const searchClearBtnEl = document.getElementById('searchClearBtn');
+if(state.search) searchClearBtnEl.classList.add('show');
+searchInputEl.addEventListener('input', e=>{
   state.search = e.target.value.trim().toLowerCase();
+  searchClearBtnEl.classList.toggle('show', e.target.value.length > 0);
+  document.getElementById('searchHistoryRow').style.display = 'none';
   renderData();
 });
-document.getElementById('prioChips').addEventListener('click', e=>{
+searchInputEl.addEventListener('focus', () => {
+  if(!searchInputEl.value.trim()) renderSjSearchHistory();
+});
+searchInputEl.addEventListener('blur', () => {
+  setTimeout(() => { document.getElementById('searchHistoryRow').style.display = 'none'; }, 150);
+  if(searchInputEl.value.trim()) addSjSearchHistory(searchInputEl.value);
+});
+searchClearBtnEl.addEventListener('click', () => {
+  searchInputEl.value = '';
+  state.search = '';
+  searchClearBtnEl.classList.remove('show');
+  renderData();
+  searchInputEl.focus();
+});
+document.getElementById('paketChips').addEventListener('click', e=>{
   const btn = e.target.closest('.chip');
   if(!btn) return;
-  document.querySelectorAll('#prioChips .chip').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('#paketChips .chip').forEach(c=>c.classList.remove('active'));
   btn.classList.add('active');
-  state.prio = btn.dataset.prio;
+  state.paket = btn.dataset.paket;
+  document.getElementById('paketFilter').value = state.paket;
   renderData();
 });
 document.getElementById('locFilter').addEventListener('change', e=>{
@@ -2136,6 +2213,11 @@ document.getElementById('sortSelect').addEventListener('change', e=>{
   renderData();
 });
 document.getElementById('toggleBulkModeBtn').addEventListener('click', toggleBulkMode);
+document.getElementById('groupLocChip').addEventListener('click', ()=>{
+  state.groupByLocation = !state.groupByLocation;
+  document.getElementById('groupLocChip').classList.toggle('active', state.groupByLocation);
+  renderData();
+});
 document.getElementById('statusChips').addEventListener('click', e=>{
   const btn = e.target.closest('.chip');
   if(!btn) return;
@@ -2147,7 +2229,6 @@ document.getElementById('statusChips').addEventListener('click', e=>{
 
 function filteredRecords(){
   return records.filter(r=>{
-    if(state.prio !== 'ALL' && r['Prioritas'] !== state.prio) return false;
     if(state.loc !== 'ALL' && r['Lokasi'] !== state.loc) return false;
     if(state.odp !== 'ALL' && r['ODP'] !== state.odp) return false;
     if(state.paket !== 'ALL' && r['Jenis Paket'] !== state.paket) return false;
@@ -2214,6 +2295,7 @@ function renderData(){
   populateLocFilter();
   populateOdpFilter();
   populatePaketFilter();
+  populatePaketChips();
   populateBwFilter();
   populatePicDatalist();
   populateOdpDatalist();
@@ -2238,32 +2320,27 @@ function renderData(){
   const clearBtn = document.getElementById('clearExpiryBtn');
   if(clearBtn) clearBtn.addEventListener('click', () => { state.expiry = 'ALL'; renderData(); });
   renderBulkBar(list);
-  const container = document.getElementById('recordList');
-  if(list.length === 0){
-    container.innerHTML = `<div class="empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <div>Tidak ada data yang cocok.</div>
-    </div>`;
-    return;
-  }
-  container.innerHTML = list.map(r=>`
+  renderRecordList(list);
+}
+function recordCardHtml(r){
+  return `
     <div class="rec-card ${bulkMode ? 'bulk-mode' : ''}" style="--acc:${prioColor(r['Prioritas'])}" ${bulkMode ? `onclick="toggleBulkSelect('${r._id}')"` : ''}>
       ${bulkMode ? `<div class="rec-select-check ${bulkSelected.has(r._id) ? 'checked' : ''}">${bulkSelected.has(r._id) ? '✓' : ''}</div>` : ''}
       <div class="rec-top">
-        <div class="rec-name copyable" onclick="copyField('${escJsAttr(r['Nama Ruangan'])}','Nama Ruangan')">${r['Nama Ruangan']||'(tanpa nama)'}</div>
+        <div class="rec-name copyable" onclick="copyField('${escJsAttr(r['Nama Ruangan'])}','Nama Ruangan')">${highlightMatch(r['Nama Ruangan']||'(tanpa nama)', state.search)}</div>
         <div style="display:flex; gap:6px; flex:none; align-items:center;">
           ${r['Diverifikasi Pada'] ? '<div class="verified-badge" title="Sudah diverifikasi">✓</div>' : ''}
-          <div class="rec-tag" style="background:${prioColor(r['Prioritas'])}">${prioShort(r['Prioritas'])}</div>
+          <div class="rec-tag" style="background:var(--gold-deep);" title="${esc(r['Jenis Paket']||'')}">${r['Jenis Paket']||'-'}</div>
         </div>
       </div>
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:4px;">
-        <div class="rec-loc copyable" style="margin-top:0;" onclick="copyField('${escJsAttr(r['Lokasi'])}','Lokasi')">${ICON_PIN} ${r['Lokasi']||'-'}</div>
+        <div class="rec-loc copyable" style="margin-top:0;" onclick="copyField('${escJsAttr(r['Lokasi'])}','Lokasi')">${ICON_PIN} ${highlightMatch(r['Lokasi']||'-', state.search)}</div>
         ${statusBadge(r)}
       </div>
-      ${r['ODP'] ? `<div class="rec-loc odp-line copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">${ICON_PLUG} ODP: ${r['ODP']}</div>` : ''}
+      ${r['ODP'] ? `<div class="rec-loc odp-line copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">${ICON_PLUG} ODP: ${highlightMatch(r['ODP'], state.search)}</div>` : ''}
       <div class="rec-meta">
-        <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${r['Customer ID']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
-        <span class="copyable" onclick="copyField('${escJsAttr(r['Serial Number'])}','Serial Number')">SN: <b>${r['Serial Number']||'-'}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
+        <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${highlightMatch(r['Customer ID']||'-', state.search)}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
+        <span class="copyable" onclick="copyField('${escJsAttr(r['Serial Number'])}','Serial Number')">SN: <b>${highlightMatch(r['Serial Number']||'-', state.search)}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
         <span>BW: <b>${r['Bandwidth']||'-'}</b></span>
       </div>
       <button type="button" class="rec-expand-toggle ${expandedCards.has(r._id)?'open':''}" data-toggle-id="${r._id}" onclick="toggleCardExpand('${r._id}')">
@@ -2276,7 +2353,7 @@ function renderData(){
         <div class="dd">Tgl Instalasi<b>${fmtTgl(r['Tanggal Instalasi'])}</b></div>
         <div class="dd">Tgl Berakhir Kontrak<b>${fmtTgl(r['Tanggal Berakhir Kontrak'])}</b></div>
         <div class="dd full copyable" onclick="copyField('${escJsAttr(r['PIC/Teknisi'])}','PIC/Teknisi')">PIC / Teknisi<b>${r['PIC/Teknisi']||'-'} <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></b></div>
-        <div class="dd full copyable" onclick="copyField('${escJsAttr(r['Nama Jaringan'])}','Nama Jaringan (SSID)')">Nama Jaringan (SSID)<b>${r['Nama Jaringan']||'-'} <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></b></div>
+        <div class="dd full copyable" onclick="copyField('${escJsAttr(r['Nama Jaringan'])}','Nama Jaringan (SSID)')">Nama Jaringan (SSID)<b>${highlightMatch(r['Nama Jaringan']||'-', state.search)} <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></b></div>
         <div class="dd full">Password WiFi<b>${r['Password WiFi'] ? '••••••••' : '-'}</b></div>
         <div class="dd full">Terakhir Diupdate<b>${fmtTgl(r['Terakhir Diupdate'])}</b></div>
         <div class="dd full">Verifikasi Terakhir<b>${r['Diverifikasi Pada'] ? ('✓ ' + fmtTgl(r['Diverifikasi Pada'])) : 'Belum diverifikasi'}</b></div>
@@ -2302,7 +2379,28 @@ function renderData(){
       </div>
       </div>
     </div>
-  `).join('');
+  `;
+}
+function renderRecordList(list){
+  const container = document.getElementById('recordList');
+  if(list.length === 0){
+    container.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <div>Tidak ada data yang cocok.</div>
+    </div>`;
+    return;
+  }
+  if(state.groupByLocation){
+    const groups = {};
+    list.forEach(r => { const l = (r['Lokasi']||'Tanpa Lokasi').trim() || 'Tanpa Lokasi'; (groups[l] = groups[l]||[]).push(r); });
+    const keys = Object.keys(groups).sort();
+    container.innerHTML = keys.map(loc => `
+      <div class="group-header">${loc} · ${groups[loc].length}</div>
+      ${groups[loc].map(r=>recordCardHtml(r)).join('')}
+    `).join('');
+  } else {
+    container.innerHTML = list.map(r=>recordCardHtml(r)).join('');
+  }
 }
 
 /* ---------------- MODE PILIH / BULK ACTIONS ---------------- */
@@ -2528,6 +2626,16 @@ function getIncidentsFor(recordId){
 function esc(v){ return v!=null ? String(v).replace(/"/g,'&quot;') : ''; }
 function escJsAttr(v){
   return v!=null ? String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;') : '';
+}
+function highlightMatch(text, query){
+  const str = text!=null ? String(text) : '';
+  const q = (query||'').trim();
+  if(!q) return str;
+  const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  try{
+    const re = new RegExp('(' + escapedQ + ')', 'ig');
+    return str.replace(re, '<mark class="search-hl">$1</mark>');
+  }catch(e){ return str; }
 }
 
 /* ---------------- WIFI: SALIN PASSWORD & QR ---------------- */

@@ -684,17 +684,18 @@ function getJaringanBreakdown(){
     const raw = localStorage.getItem('sj_records_v1');
     const records = raw ? JSON.parse(raw) : [];
     const status = { AKTIF:0, NONAKTIF:0, ISOLIR:0 };
-    const prio = { 'PRIORITAS 1':0, 'PRIORITAS 2':0, 'PRIORITAS 3':0 };
+    const paketCount = {};
     let verified = 0;
     records.forEach(r => {
       const st = String(r['Status Kontrak']||'').toUpperCase();
       if(status[st] !== undefined) status[st]++;
-      const p = String(r['Prioritas']||'').toUpperCase();
-      if(prio[p] !== undefined) prio[p]++;
+      const p = r['Jenis Paket'] || 'Tidak diketahui';
+      paketCount[p] = (paketCount[p]||0) + 1;
       if(r['Diverifikasi Pada']) verified++;
     });
-    return { status, prio, verified, total: records.length };
-  }catch(e){ return { status:{AKTIF:0,NONAKTIF:0,ISOLIR:0}, prio:{'PRIORITAS 1':0,'PRIORITAS 2':0,'PRIORITAS 3':0}, verified:0, total:0 }; }
+    let paket = Object.entries(paketCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    return { status, paket, verified, total: records.length };
+  }catch(e){ return { status:{AKTIF:0,NONAKTIF:0,ISOLIR:0}, paket:[], verified:0, total:0 }; }
 }
 function getCurrentUsername(){
   try{
@@ -839,16 +840,17 @@ function renderRingkasan(){
       </button>
     </div>
 
-    <div class="r-section-title">Status &amp; Prioritas Jaringan</div>
+    <div class="r-section-title">Status &amp; Jenis Paket Jaringan</div>
     <div class="r-breakdown" style="margin-bottom:14px;">
       <div class="r-bd-pill"><div class="n">${bd.status.AKTIF}</div><div class="l"><span class="r-bd-dot" style="background:#34D399;"></span>Aktif</div></div>
       <div class="r-bd-pill"><div class="n">${bd.status.NONAKTIF}</div><div class="l"><span class="r-bd-dot" style="background:#F87171;"></span>Nonaktif</div></div>
       <div class="r-bd-pill"><div class="n">${bd.status.ISOLIR}</div><div class="l"><span class="r-bd-dot" style="background:#FBBF24;"></span>Isolir</div></div>
     </div>
     <div class="r-breakdown">
-      <div class="r-bd-pill"><div class="n">${bd.prio['PRIORITAS 1']}</div><div class="l"><span class="r-bd-dot" style="background:#F87171;"></span>Prioritas 1</div></div>
-      <div class="r-bd-pill"><div class="n">${bd.prio['PRIORITAS 2']}</div><div class="l"><span class="r-bd-dot" style="background:#FB923C;"></span>Prioritas 2</div></div>
-      <div class="r-bd-pill"><div class="n">${bd.prio['PRIORITAS 3']}</div><div class="l"><span class="r-bd-dot" style="background:#818CF8;"></span>Prioritas 3</div></div>
+      ${bd.paket.map(([p,c],i)=>{
+        const colors=['#22D3EE','#818CF8','#34D399'];
+        return `<div class="r-bd-pill"><div class="n">${c}</div><div class="l"><span class="r-bd-dot" style="background:${colors[i%colors.length]};"></span>${p}</div></div>`;
+      }).join('')}
     </div>
 
     <div class="r-section-title">Progres Verifikasi Data</div>
