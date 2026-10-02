@@ -1017,7 +1017,7 @@
     <thead>
       <tr>
         <th>No</th><th>Prioritas</th><th>Nama Ruangan</th><th>Customer ID</th><th>Serial Number</th>
-        <th>Bandwidth</th><th>Status</th><th>Lokasi</th><th>ODP</th><th>Jenis Paket</th><th>Tgl Instalasi</th><th>Tgl Berakhir</th><th>PIC/Teknisi</th><th>Nama Jaringan</th><th>Password WiFi</th>
+        <th>Bandwidth</th><th>Status</th><th>Keterangan Nonaktif</th><th>Lokasi</th><th>ODP</th><th>Jenis Paket</th><th>Tgl Instalasi</th><th>Tgl Berakhir</th><th>PIC/Teknisi</th><th>Nama Jaringan</th><th>Password WiFi</th>
       </tr>
     </thead>
     <tbody id="printTableBody"></tbody>
@@ -1256,7 +1256,8 @@ function statusBadge(r){
   if(v === 'ISOLIR'){
     return `<span class="status-badge st-isolir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Isolir</span>`;
   }
-  return `<span class="status-badge st-nonaktif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>Nonaktif</span>`;
+  const ket = r['Keterangan Nonaktif'] ? `<div style="font-size:10px; color:var(--danger); margin-top:3px; text-align:right; font-weight:500; max-width:140px; word-break:break-word;">${escapeHtml(r['Keterangan Nonaktif'])}</div>` : '';
+  return `<div style="display:flex; flex-direction:column; align-items:flex-end;"><span class="status-badge st-nonaktif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>Nonaktif</span>${ket}</div>`;
 }
 function fmtTgl(d){
   if(!d) return '-';
@@ -2469,7 +2470,7 @@ function bulkDeleteSelected(){
 function openDetail(id){
   const r = records.find(x=>x._id===id);
   if(!r) return;
-  const fields = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+  const fields = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Keterangan Nonaktif','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
   const incidents = getIncidentsFor(id);
   const sheet = document.getElementById('modalSheet');
   sheet.innerHTML = `
@@ -2489,6 +2490,13 @@ function openDetail(id){
             <option value="NONAKTIF" ${statusKontrakVal(r)==='NONAKTIF'?'selected':''}>Nonaktif</option>
             <option value="ISOLIR" ${statusKontrakVal(r)==='ISOLIR'?'selected':''}>Isolir</option>
           </select>
+        </div>`;
+        }
+        if(f === 'Keterangan Nonaktif'){
+          return `
+        <div class="field">
+          <label>${f} <span class="hint">jika status nonaktif</span></label>
+          <input type="text" name="${f}" placeholder="cth. Perangkat rusak / Kabel terputus" value="${r[f]!=null? String(r[f]).replace(/"/g,'&quot;'):''}">
         </div>`;
         }
         if(f === 'Password WiFi'){
@@ -3323,7 +3331,7 @@ setTimeout(checkAutoBackup, 3000);
 setTimeout(()=>checkContractNotifications(false), 4000);
 
 /* ---------------- PRINT REPORT ---------------- */
-const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Keterangan Nonaktif','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
 
 function buildPrintTable(list, subtitle, includePass){
   document.getElementById('printSubtitle').textContent = subtitle + ` (${list.length} data)`;
@@ -3385,6 +3393,7 @@ function exportExcel(list, filename){
     'Serial Number': r['Serial Number']||'',
     'Bandwidth': r['Bandwidth']||'',
     'Status Kontrak': r['Status Kontrak']||'',
+    'Keterangan Nonaktif': r['Keterangan Nonaktif']||'',
     'Lokasi': r['Lokasi']||'',
     'ODP': r['ODP']||'',
     'Jenis Paket': r['Jenis Paket']||'',
@@ -3414,7 +3423,7 @@ document.getElementById('excelAllBtn').addEventListener('click', ()=>{
 });
 
 /* ---------------- IMPOR EXCEL MASSAL ---------------- */
-const IMPORT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+const IMPORT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Keterangan Nonaktif','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
 document.getElementById('importExcelBtn').addEventListener('click', ()=>{
   document.getElementById('importExcelInput').click();
 });
