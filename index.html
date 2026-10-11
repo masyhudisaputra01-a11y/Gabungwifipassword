@@ -170,6 +170,16 @@
   .r-bd-pill .l{ font-size:10.5px; color:var(--ink-soft); display:flex; align-items:center; gap:5px; margin-top:2px; }
   .r-bd-dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 
+  .r-donut-card{ display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:13px 14px; margin-bottom:10px; }
+  .r-donut{ width:78px; height:78px; border-radius:50%; flex-shrink:0; position:relative; }
+  .r-donut::after{ content:""; position:absolute; inset:16px; background:var(--card); border-radius:50%; }
+  .r-donut-center{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:1; font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .r-donut-legend{ flex:1; min-width:0; display:flex; flex-direction:column; gap:7px; }
+  .r-dl-item{ display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-soft); min-width:0; }
+  .r-dl-item .lbl{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .r-dl-item b{ margin-left:auto; color:var(--ink); font-weight:700; flex-shrink:0; padding-left:6px; }
+  .r-dl-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
   .r-progress-card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius-sm); padding:13px 14px; }
   .r-progress-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
   .r-progress-top b{ font-size:13.5px; }
@@ -693,9 +703,27 @@ function getJaringanBreakdown(){
       paketCount[p] = (paketCount[p]||0) + 1;
       if(r['Diverifikasi Pada']) verified++;
     });
-    let paket = Object.entries(paketCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    let paketSorted = Object.entries(paketCount).sort((a,b)=>b[1]-a[1]);
+    let paket = paketSorted.slice(0,3);
+    const restSum = paketSorted.slice(3).reduce((s,e)=>s+e[1],0);
+    if(restSum > 0) paket.push(['Lainnya', restSum]);
     return { status, paket, verified, total: records.length };
   }catch(e){ return { status:{AKTIF:0,NONAKTIF:0,ISOLIR:0}, paket:[], verified:0, total:0 }; }
+}
+function renderDonutCard(segments, centerLabel){
+  const total = segments.reduce((s,x)=>s+x.value,0);
+  let gradient = 'var(--line)';
+  if(total > 0){
+    let acc = 0;
+    gradient = 'conic-gradient(' + segments.filter(s=>s.value>0).map(s=>{
+      const start = acc/total*100; acc += s.value; const end = acc/total*100;
+      return `${s.color} ${start}% ${end}%`;
+    }).join(',') + ')';
+  }
+  return `<div class="r-donut-card">
+    <div class="r-donut" style="background:${gradient};"><div class="r-donut-center">${centerLabel}</div></div>
+    <div class="r-donut-legend">${segments.map(s=>`<div class="r-dl-item"><span class="r-dl-dot" style="background:${s.color};"></span><span class="lbl">${s.label}</span><b>${s.value}</b></div>`).join('')}</div>
+  </div>`;
 }
 function getCurrentUsername(){
   try{
@@ -841,17 +869,15 @@ function renderRingkasan(){
     </div>
 
     <div class="r-section-title">Status &amp; Jenis Paket Jaringan</div>
-    <div class="r-breakdown" style="margin-bottom:14px;">
-      <div class="r-bd-pill"><div class="n">${bd.status.AKTIF}</div><div class="l"><span class="r-bd-dot" style="background:#34D399;"></span>Aktif</div></div>
-      <div class="r-bd-pill"><div class="n">${bd.status.NONAKTIF}</div><div class="l"><span class="r-bd-dot" style="background:#F87171;"></span>Nonaktif</div></div>
-      <div class="r-bd-pill"><div class="n">${bd.status.ISOLIR}</div><div class="l"><span class="r-bd-dot" style="background:#FBBF24;"></span>Isolir</div></div>
-    </div>
-    <div class="r-breakdown">
-      ${bd.paket.map(([p,c],i)=>{
-        const colors=['#22D3EE','#818CF8','#34D399'];
-        return `<div class="r-bd-pill"><div class="n">${c}</div><div class="l"><span class="r-bd-dot" style="background:${colors[i%colors.length]};"></span>${p}</div></div>`;
-      }).join('')}
-    </div>
+    ${renderDonutCard([
+      { label:'Aktif', value:bd.status.AKTIF, color:'#34D399' },
+      { label:'Nonaktif', value:bd.status.NONAKTIF, color:'#F87171' },
+      { label:'Isolir', value:bd.status.ISOLIR, color:'#FBBF24' }
+    ], bd.status.AKTIF + bd.status.NONAKTIF + bd.status.ISOLIR)}
+    ${renderDonutCard(
+      bd.paket.map(([p,c],i)=>({ label:p, value:c, color:['#22D3EE','#818CF8','#34D399','#94A3B8'][i%4] })),
+      bd.total
+    )}
 
     <div class="r-section-title">Progres Verifikasi Data</div>
     <div class="r-progress-card" id="cardVerifProgress">

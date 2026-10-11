@@ -454,6 +454,7 @@
   .status-badge svg{width:11px; height:11px; flex:none;}
   .status-badge.st-aktif{color:var(--ok); background:var(--ok-bg);}
   .status-badge.st-nonaktif{color:var(--danger); background:var(--danger-bg);}
+  .nonaktif-reason{ margin-top:6px; padding:7px 10px; border-radius:8px; background:var(--danger-bg); border:1px solid rgba(248,113,113,.25); color:var(--danger); font-size:11.5px; line-height:1.5; }
   .status-badge.st-isolir{color:var(--warn); background:var(--warn-bg);}
   .rec-detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);}
   .rec-collapsible{ display:none; }
@@ -831,9 +832,16 @@
       <button class="chip" data-status="AKTIF"><span class="status-dot" style="background:#34D399;"></span>Aktif</button>
       <button class="chip" data-status="NONAKTIF"><span class="status-dot" style="background:#F87171;"></span>Nonaktif</button>
       <button class="chip" data-status="ISOLIR"><span class="status-dot" style="background:#FBBF24;"></span>Isolir</button>
+    </div>
+
+    <div class="chip-row" id="toolsChips" style="margin-top:6px;">
       <button type="button" class="chip" id="groupLocChip">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12" style="vertical-align:-1px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
         Kelompokkan Lokasi
+      </button>
+      <button type="button" class="chip" id="scanSearchChip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12" style="vertical-align:-1px;"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" stroke-linecap="round"/><line x1="7" y1="12" x2="17" y2="12" stroke-linecap="round"/></svg>
+        Scan untuk Cari
       </button>
     </div>
 
@@ -898,12 +906,16 @@
           </div>
           <div class="field">
             <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Status Kontrak</label>
-            <select name="Status Kontrak">
+            <select name="Status Kontrak" id="statusKontrakSelect">
               <option value="AKTIF" selected>Aktif</option>
               <option value="NONAKTIF">Nonaktif</option>
               <option value="ISOLIR">Isolir</option>
             </select>
           </div>
+        </div>
+        <div class="field" id="keteranganNonaktifField" style="display:none;">
+          <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Keterangan Nonaktif <span class="hint">opsional</span></label>
+          <textarea name="Keterangan Nonaktif" placeholder="cth. Pelanggan menunggak, perangkat rusak, dll."></textarea>
         </div>
         <div class="field">
           <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Lokasi</label>
@@ -2220,11 +2232,14 @@ document.getElementById('groupLocChip').addEventListener('click', ()=>{
 });
 document.getElementById('statusChips').addEventListener('click', e=>{
   const btn = e.target.closest('.chip');
-  if(!btn) return;
+  if(!btn || !btn.dataset.status) return;
   document.querySelectorAll('#statusChips .chip').forEach(c=>c.classList.remove('active'));
   btn.classList.add('active');
   state.status = btn.dataset.status;
   renderData();
+});
+document.getElementById('scanSearchChip').addEventListener('click', () => {
+  openBarcodeScanner(null, 'search');
 });
 
 function filteredRecords(){
@@ -2240,7 +2255,7 @@ function filteredRecords(){
       if(state.expiry === 'SOON30' && !(d !== null && d >= 0 && d <= 30)) return false;
     }
     if(state.search){
-      const hay = [r['Nama Ruangan'], r['Customer ID'], r['Serial Number'], r['Lokasi'], r['ODP'], r['Jenis Paket'], r['Nama Jaringan']]
+      const hay = [r['Nama Ruangan'], r['Customer ID'], r['Serial Number'], r['Lokasi'], r['ODP'], r['Jenis Paket'], r['Nama Jaringan'], r['Keterangan Nonaktif']]
         .map(v=>String(v||'').toLowerCase()).join(' | ');
       if(!hay.includes(state.search)) return false;
     }
@@ -2337,6 +2352,7 @@ function recordCardHtml(r){
         <div class="rec-loc copyable" style="margin-top:0;" onclick="copyField('${escJsAttr(r['Lokasi'])}','Lokasi')">${ICON_PIN} ${highlightMatch(r['Lokasi']||'-', state.search)}</div>
         ${statusBadge(r)}
       </div>
+      ${(String(r['Status Kontrak']||'').toUpperCase()==='NONAKTIF' && r['Keterangan Nonaktif']) ? `<div class="nonaktif-reason">${esc(r['Keterangan Nonaktif'])}</div>` : ''}
       ${r['ODP'] ? `<div class="rec-loc odp-line copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">${ICON_PLUG} ODP: ${highlightMatch(r['ODP'], state.search)}</div>` : ''}
       <div class="rec-meta">
         <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${highlightMatch(r['Customer ID']||'-', state.search)}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
@@ -2469,7 +2485,7 @@ function bulkDeleteSelected(){
 function openDetail(id){
   const r = records.find(x=>x._id===id);
   if(!r) return;
-  const fields = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+  const fields = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Keterangan Nonaktif','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
   const incidents = getIncidentsFor(id);
   const sheet = document.getElementById('modalSheet');
   sheet.innerHTML = `
@@ -2501,6 +2517,13 @@ function openDetail(id){
           </button>
         </div>
         <button type="button" class="btn-secondary" style="margin-bottom:15px;" onclick="copyWifiPass('${r._id}')">${ICON_KEY} Salin Password WiFi</button>`;
+        }
+        if(f === 'Keterangan Nonaktif'){
+          return `
+        <div class="field" id="editKeteranganNonaktifField" style="display:${String(r['Status Kontrak']||'').toUpperCase()==='NONAKTIF' ? 'block' : 'none'};">
+          <label>${f} <span class="hint">opsional</span></label>
+          <textarea name="${f}" placeholder="cth. Pelanggan menunggak, perangkat rusak, dll.">${r[f]!=null? String(r[f]).replace(/</g,'&lt;'):''}</textarea>
+        </div>`;
         }
         if(f === 'Serial Number'){
           return `
@@ -2539,6 +2562,16 @@ function openDetail(id){
   `;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  const editStatusSelect = document.querySelector('#editForm select[name="Status Kontrak"]');
+  if(editStatusSelect){
+    editStatusSelect.addEventListener('change', e=>{
+      const kf = document.getElementById('editKeteranganNonaktifField');
+      if(!kf) return;
+      const isNonaktif = e.target.value === 'NONAKTIF';
+      kf.style.display = isNonaktif ? 'block' : 'none';
+      if(!isNonaktif) kf.querySelector('textarea').value = '';
+    });
+  }
   document.getElementById('editForm').addEventListener('submit', e=>{
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -2676,6 +2709,7 @@ function buildRecordSummaryText(r){
     `Tgl Berakhir Kontrak: ${fmtTgl(r['Tanggal Berakhir Kontrak'])}`,
     `PIC/Teknisi: ${r['PIC/Teknisi']||'-'}`
   ];
+  if(String(r['Status Kontrak']||'').toUpperCase()==='NONAKTIF' && r['Keterangan Nonaktif']) lines.push(`Keterangan Nonaktif: ${r['Keterangan Nonaktif']}`);
   if(r['Nama Jaringan']) lines.push(`Nama WiFi (SSID): ${r['Nama Jaringan']}`);
   return lines.join('\n');
 }
@@ -2747,9 +2781,11 @@ function duplicateRecord(id){
 let _scannerStream = null;
 let _scannerRAF = null;
 let _scannerTargetId = null;
+let _scannerMode = 'fill'; // 'fill' = isi kolom form, 'search' = cari data yang sudah ada
 
-async function openBarcodeScanner(targetInputId){
+async function openBarcodeScanner(targetInputId, mode){
   _scannerTargetId = targetInputId;
+  _scannerMode = mode || 'fill';
 
   const hasDetector = 'BarcodeDetector' in window;
   const hasCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -2761,8 +2797,8 @@ async function openBarcodeScanner(targetInputId){
   overlay.innerHTML = `
     <div class="modal-sheet" style="max-width:480px;">
       <div class="modal-handle"></div>
-      <div class="modal-title">Scan Barcode / QR Serial Number</div>
-      <div class="scanner-hint" id="scannerHint">${hasCamera ? 'Arahkan kamera ke barcode/QR pada perangkat' : 'Pilih foto barcode/QR dari galeri'}</div>
+      <div class="modal-title">${_scannerMode==='search' ? 'Scan untuk Cari Data' : 'Scan Barcode / QR Serial Number'}</div>
+      <div class="scanner-hint" id="scannerHint">${hasCamera ? (_scannerMode==='search' ? 'Arahkan kamera ke barcode/QR di perangkat untuk mencari datanya' : 'Arahkan kamera ke barcode/QR pada perangkat') : 'Pilih foto barcode/QR dari galeri'}</div>
       ${hasCamera ? `
       <div class="scanner-wrap">
         <video id="scannerVideo" autoplay playsinline muted></video>
@@ -2770,14 +2806,15 @@ async function openBarcodeScanner(targetInputId){
       </div>` : ''}
       <button type="button" class="btn-secondary" id="scannerGalleryBtn" style="width:100%; margin-bottom:8px;">${ICON_GALLERY} Pilih Foto dari Galeri</button>
       <input type="file" id="scannerFileInput" accept="image/*" style="display:none;">
-      <button type="button" class="btn-secondary" id="scannerManualBtn" style="width:100%; margin-bottom:8px;">${ICON_PENCIL} Ketik Manual Saja</button>
+      ${_scannerMode==='fill' ? `<button type="button" class="btn-secondary" id="scannerManualBtn" style="width:100%; margin-bottom:8px;">${ICON_PENCIL} Ketik Manual Saja</button>` : ''}
       <button type="button" class="btn-ghost" id="scannerCloseBtn" style="width:100%;">Batal</button>
     </div>
   `;
   document.body.appendChild(overlay);
 
   document.getElementById('scannerCloseBtn').addEventListener('click', closeBarcodeScanner);
-  document.getElementById('scannerManualBtn').addEventListener('click', closeBarcodeScanner);
+  const manualBtn = document.getElementById('scannerManualBtn');
+  if(manualBtn) manualBtn.addEventListener('click', closeBarcodeScanner);
   overlay.addEventListener('click', (e) => { if(e.target === overlay) closeBarcodeScanner(); });
 
   const fileInput = document.getElementById('scannerFileInput');
@@ -2814,10 +2851,7 @@ async function openBarcodeScanner(targetInputId){
       if(codes && codes.length){
         const value = (codes[0].rawValue || '').trim();
         if(value){
-          const input = document.getElementById(_scannerTargetId);
-          if(input){ input.value = value; input.dispatchEvent(new Event('input', {bubbles:true})); }
-          showToast('Kode terdeteksi: ' + value);
-          closeBarcodeScanner();
+          handleScannedValue(value);
           return;
         }
       }
@@ -2840,13 +2874,33 @@ async function scanBarcodeFromFile(file){
       return;
     }
     const value = (codes[0].rawValue || '').trim();
-    const input = document.getElementById(_scannerTargetId);
-    if(input){ input.value = value; input.dispatchEvent(new Event('input', {bubbles:true})); }
-    showToast('Kode terdeteksi: ' + value);
-    closeBarcodeScanner();
+    handleScannedValue(value);
   }catch(e){
     if(hint) hint.textContent = 'Gagal membaca foto. Coba foto lain.';
   }
+}
+
+function handleScannedValue(value){
+  if(_scannerMode === 'search'){
+    closeBarcodeScanner();
+    searchBySerialFromScan(value);
+    return;
+  }
+  const input = document.getElementById(_scannerTargetId);
+  if(input){ input.value = value; input.dispatchEvent(new Event('input', {bubbles:true})); }
+  showToast('Kode terdeteksi: ' + value);
+  closeBarcodeScanner();
+}
+function searchBySerialFromScan(value){
+  document.querySelector('button[data-view="data"]').click();
+  state.search = String(value||'').trim().toLowerCase();
+  state.expiry = 'ALL';
+  const inp = document.getElementById('searchInput');
+  inp.value = value;
+  document.getElementById('searchClearBtn').classList.add('show');
+  renderData();
+  const found = filteredRecords().length;
+  showToast(found > 0 ? `${found} data ditemukan untuk "${value}"` : `Tidak ada data dengan kode "${value}"`);
 }
 
 function closeBarcodeScanner(){
@@ -3089,6 +3143,12 @@ async function downloadReportAsPdf(data){
   sel.innerHTML = LOCATIONS.map(l=>`<option value="${l}">${l}</option>`).join('');
 })();
 
+document.getElementById('statusKontrakSelect').addEventListener('change', e=>{
+  const field = document.getElementById('keteranganNonaktifField');
+  const isNonaktif = e.target.value === 'NONAKTIF';
+  field.style.display = isNonaktif ? 'block' : 'none';
+  if(!isNonaktif) field.querySelector('textarea').value = '';
+});
 document.getElementById('addForm').addEventListener('submit', e=>{
   e.preventDefault();
   const fd = new FormData(e.target);
@@ -3323,7 +3383,7 @@ setTimeout(checkAutoBackup, 3000);
 setTimeout(()=>checkContractNotifications(false), 4000);
 
 /* ---------------- PRINT REPORT ---------------- */
-const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Keterangan Nonaktif','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
 
 function buildPrintTable(list, subtitle, includePass){
   document.getElementById('printSubtitle').textContent = subtitle + ` (${list.length} data)`;
@@ -3385,6 +3445,7 @@ function exportExcel(list, filename){
     'Serial Number': r['Serial Number']||'',
     'Bandwidth': r['Bandwidth']||'',
     'Status Kontrak': r['Status Kontrak']||'',
+    'Keterangan Nonaktif': r['Keterangan Nonaktif']||'',
     'Lokasi': r['Lokasi']||'',
     'ODP': r['ODP']||'',
     'Jenis Paket': r['Jenis Paket']||'',
@@ -3414,7 +3475,7 @@ document.getElementById('excelAllBtn').addEventListener('click', ()=>{
 });
 
 /* ---------------- IMPOR EXCEL MASSAL ---------------- */
-const IMPORT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
+const IMPORT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Keterangan Nonaktif','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
 document.getElementById('importExcelBtn').addEventListener('click', ()=>{
   document.getElementById('importExcelInput').click();
 });
