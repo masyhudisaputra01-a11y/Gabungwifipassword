@@ -693,12 +693,13 @@ function getJaringanBreakdown(){
   try{
     const raw = localStorage.getItem('sj_records_v1');
     const records = raw ? JSON.parse(raw) : [];
-    const status = { AKTIF:0, NONAKTIF:0, ISOLIR:0 };
+    const status = { AKTIF:0, NONAKTIF:0, ISOLIR:0, 'ONT LOS':0, 'ONT DYINGASP':0 };
     const paketCount = {};
     let verified = 0;
     records.forEach(r => {
-      const st = String(r['Status Kontrak']||'').toUpperCase();
-      if(status[st] !== undefined) status[st]++;
+      const st = String(r['Status Kontrak']||'').toUpperCase().replace(/[^A-Z]/g,'');
+      const key = st==='ONTLOS' ? 'ONT LOS' : (st==='ONTDYINGASP'||st==='ONTDYINGGASP') ? 'ONT DYINGASP' : st;
+      if(status[key] !== undefined) status[key]++;
       const p = r['Jenis Paket'] || 'Tidak diketahui';
       paketCount[p] = (paketCount[p]||0) + 1;
       if(r['Diverifikasi Pada']) verified++;
@@ -708,7 +709,7 @@ function getJaringanBreakdown(){
     const restSum = paketSorted.slice(3).reduce((s,e)=>s+e[1],0);
     if(restSum > 0) paket.push(['Lainnya', restSum]);
     return { status, paket, verified, total: records.length };
-  }catch(e){ return { status:{AKTIF:0,NONAKTIF:0,ISOLIR:0}, paket:[], verified:0, total:0 }; }
+  }catch(e){ return { status:{AKTIF:0,NONAKTIF:0,ISOLIR:0,'ONT LOS':0,'ONT DYINGASP':0}, paket:[], verified:0, total:0 }; }
 }
 function renderDonutCard(segments, centerLabel){
   const total = segments.reduce((s,x)=>s+x.value,0);
@@ -872,8 +873,10 @@ function renderRingkasan(){
     ${renderDonutCard([
       { label:'Aktif', value:bd.status.AKTIF, color:'#34D399' },
       { label:'Nonaktif', value:bd.status.NONAKTIF, color:'#F87171' },
-      { label:'Isolir', value:bd.status.ISOLIR, color:'#FBBF24' }
-    ], bd.status.AKTIF + bd.status.NONAKTIF + bd.status.ISOLIR)}
+      { label:'Isolir', value:bd.status.ISOLIR, color:'#FBBF24' },
+      { label:'Ont Los', value:bd.status['ONT LOS'], color:'#FB923C' },
+      { label:'Ont Dyingasp', value:bd.status['ONT DYINGASP'], color:'#C084FC' }
+    ], bd.status.AKTIF + bd.status.NONAKTIF + bd.status.ISOLIR + bd.status['ONT LOS'] + bd.status['ONT DYINGASP'])}
     ${renderDonutCard(
       bd.paket.map(([p,c],i)=>({ label:p, value:c, color:['#22D3EE','#818CF8','#34D399','#94A3B8'][i%4] })),
       bd.total

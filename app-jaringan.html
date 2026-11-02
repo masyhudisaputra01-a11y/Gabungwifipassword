@@ -59,6 +59,10 @@
     --danger-bg:rgba(248,113,113,.14);
     --warn:#FBBF24;
     --warn-bg:rgba(251,191,36,.14);
+    --los:#FB923C;
+    --los-bg:rgba(251,146,60,.14);
+    --dying:#C084FC;
+    --dying-bg:rgba(192,132,252,.14);
     --p1:#F87171;
     --p2:#FB923C;
     --p3:#818CF8;
@@ -91,6 +95,10 @@
     --danger-bg:#F7E9E7;
     --warn:#92640A;
     --warn-bg:#F7EED9;
+    --los:#B35A17;
+    --los-bg:#F9ECDF;
+    --dying:#6B3FA0;
+    --dying-bg:#EFE8F7;
     --p1:#8B2E2E;
     --p2:#B35A17;
     --p3:#1D3A63;
@@ -456,6 +464,8 @@
   .status-badge.st-nonaktif{color:var(--danger); background:var(--danger-bg);}
   .nonaktif-reason{ margin-top:6px; padding:7px 10px; border-radius:8px; background:var(--danger-bg); border:1px solid rgba(248,113,113,.25); color:var(--danger); font-size:11.5px; line-height:1.5; }
   .status-badge.st-isolir{color:var(--warn); background:var(--warn-bg);}
+  .status-badge.st-ontlos{color:var(--los); background:var(--los-bg);}
+  .status-badge.st-dyingasp{color:var(--dying); background:var(--dying-bg);}
   .rec-detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);}
   .rec-collapsible{ display:none; }
   .rec-collapsible.show{ display:block; animation:collapseIn .2s ease; }
@@ -786,6 +796,8 @@
       <button type="button" class="chip" data-map-status="AKTIF">Aktif</button>
       <button type="button" class="chip" data-map-status="NONAKTIF">Nonaktif</button>
       <button type="button" class="chip" data-map-status="ISOLIR">Isolir</button>
+      <button type="button" class="chip" data-map-status="ONT LOS">Ont Los</button>
+      <button type="button" class="chip" data-map-status="ONT DYINGASP">Ont Dyingasp</button>
       <button type="button" class="chip" id="mapTileToggle" data-tile="street">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Satelit
@@ -832,6 +844,8 @@
       <button class="chip" data-status="AKTIF"><span class="status-dot" style="background:#34D399;"></span>Aktif</button>
       <button class="chip" data-status="NONAKTIF"><span class="status-dot" style="background:#F87171;"></span>Nonaktif</button>
       <button class="chip" data-status="ISOLIR"><span class="status-dot" style="background:#FBBF24;"></span>Isolir</button>
+      <button class="chip" data-status="ONT LOS"><span class="status-dot" style="background:#FB923C;"></span>Ont Los</button>
+      <button class="chip" data-status="ONT DYINGASP"><span class="status-dot" style="background:#C084FC;"></span>Ont Dyingasp</button>
     </div>
 
     <div class="chip-row" id="toolsChips" style="margin-top:6px;">
@@ -910,6 +924,8 @@
               <option value="AKTIF" selected>Aktif</option>
               <option value="NONAKTIF">Nonaktif</option>
               <option value="ISOLIR">Isolir</option>
+              <option value="ONT LOS">Ont Los</option>
+              <option value="ONT DYINGASP">Ont Dyingasp</option>
             </select>
           </div>
         </div>
@@ -1256,19 +1272,31 @@ function prioShort(p){
 function isAktif(r){
   return String(r['Status Kontrak']||'').toUpperCase() === 'AKTIF';
 }
+function normalizeStatus(v){
+  const k = String(v||'').toUpperCase().replace(/[^A-Z]/g,'');
+  if(k === 'AKTIF') return 'AKTIF';
+  if(k === 'NONAKTIF') return 'NONAKTIF';
+  if(k === 'ISOLIR') return 'ISOLIR';
+  if(k === 'ONTLOS' || k === 'LOS') return 'ONT LOS';
+  if(k === 'ONTDYINGASP' || k === 'ONTDYINGGASP' || k === 'DYINGASP' || k === 'DYINGGASP') return 'ONT DYINGASP';
+  return String(v||'').toUpperCase().trim();
+}
 function statusKontrakVal(r){
-  const v = String(r['Status Kontrak']||'').toUpperCase();
-  return v === 'ISOLIR' ? 'ISOLIR' : (v === 'NONAKTIF' ? 'NONAKTIF' : 'AKTIF');
+  const v = normalizeStatus(r['Status Kontrak']);
+  return (v === 'ISOLIR' || v === 'NONAKTIF' || v === 'ONT LOS' || v === 'ONT DYINGASP') ? v : 'AKTIF';
 }
 function statusBadge(r){
   const v = statusKontrakVal(r);
-  if(v === 'AKTIF'){
-    return `<span class="status-badge st-aktif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg>Aktif</span>`;
-  }
-  if(v === 'ISOLIR'){
-    return `<span class="status-badge st-isolir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Isolir</span>`;
-  }
-  return `<span class="status-badge st-nonaktif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>Nonaktif</span>`;
+  const ico = {
+    'AKTIF': '<circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/>',
+    'ISOLIR': '<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+    'NONAKTIF': '<circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/>',
+    'ONT LOS': '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/><line x1="3" y1="3" x2="21" y2="21"/>',
+    'ONT DYINGASP': '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'
+  }[v];
+  const cls = { 'AKTIF':'st-aktif','ISOLIR':'st-isolir','NONAKTIF':'st-nonaktif','ONT LOS':'st-ontlos','ONT DYINGASP':'st-dyingasp' }[v];
+  const label = { 'AKTIF':'Aktif','ISOLIR':'Isolir','NONAKTIF':'Nonaktif','ONT LOS':'Ont Los','ONT DYINGASP':'Ont Dyingasp' }[v];
+  return `<span class="status-badge ${cls}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${ico}</svg>${label}</span>`;
 }
 function fmtTgl(d){
   if(!d) return '-';
@@ -1925,7 +1953,7 @@ function renderLocMap(){
   if(!el || typeof L === 'undefined') return;
 
   const filterFn = mapStatusFilter === 'ALL' ? ()=>true
-    : r => String(r['Status Kontrak']||'').toUpperCase() === mapStatusFilter;
+    : r => normalizeStatus(r['Status Kontrak']) === mapStatusFilter;
 
   // Kelompokkan berdasarkan titik tujuan: lokasi dengan koordinat kustom jadi
   // marker sendiri; sisanya dikelompokkan menurut grup gedung/site bawaan.
@@ -1948,7 +1976,7 @@ function renderLocMap(){
   _locMapMarkers.forEach(m=>_locMapInstance.removeLayer(m));
   _locMapMarkers = [];
 
-  const markerColor = mapStatusFilter === 'AKTIF' ? '#34D399' : mapStatusFilter === 'NONAKTIF' ? '#F87171' : mapStatusFilter === 'ISOLIR' ? '#FBBF24' : getComputedStyle(document.documentElement).getPropertyValue('--gold').trim();
+  const markerColor = mapStatusFilter === 'AKTIF' ? '#34D399' : mapStatusFilter === 'NONAKTIF' ? '#F87171' : mapStatusFilter === 'ISOLIR' ? '#FBBF24' : mapStatusFilter === 'ONT LOS' ? '#FB923C' : mapStatusFilter === 'ONT DYINGASP' ? '#C084FC' : getComputedStyle(document.documentElement).getPropertyValue('--gold').trim();
 
   Object.values(points).forEach(pt=>{
     const total = pt.records.length;
@@ -2248,7 +2276,7 @@ function filteredRecords(){
     if(state.odp !== 'ALL' && r['ODP'] !== state.odp) return false;
     if(state.paket !== 'ALL' && r['Jenis Paket'] !== state.paket) return false;
     if(state.bw !== 'ALL' && r['Bandwidth'] !== state.bw) return false;
-    if(state.status !== 'ALL' && String(r['Status Kontrak']||'').toUpperCase() !== state.status) return false;
+    if(state.status !== 'ALL' && normalizeStatus(r['Status Kontrak']) !== state.status) return false;
     if(state.expiry !== 'ALL'){
       const d = daysUntil(r['Tanggal Berakhir Kontrak']);
       if(state.expiry === 'OVERDUE' && !(d !== null && d < 0)) return false;
@@ -2504,6 +2532,8 @@ function openDetail(id){
             <option value="AKTIF" ${statusKontrakVal(r)==='AKTIF'?'selected':''}>Aktif</option>
             <option value="NONAKTIF" ${statusKontrakVal(r)==='NONAKTIF'?'selected':''}>Nonaktif</option>
             <option value="ISOLIR" ${statusKontrakVal(r)==='ISOLIR'?'selected':''}>Isolir</option>
+            <option value="ONT LOS" ${statusKontrakVal(r)==='ONT LOS'?'selected':''}>Ont Los</option>
+            <option value="ONT DYINGASP" ${statusKontrakVal(r)==='ONT DYINGASP'?'selected':''}>Ont Dyingasp</option>
           </select>
         </div>`;
         }
@@ -3499,6 +3529,7 @@ document.getElementById('importExcelInput').addEventListener('change', e=>{
         let target = custId ? records.find(x=> String(x['Customer ID']||'').trim() === custId) : null;
         if(target){
           IMPORT_FIELDS.forEach(f=>{ if(row[f] !== undefined && row[f] !== '') target[f] = row[f]; });
+          if(target['Status Kontrak']) target['Status Kontrak'] = normalizeStatus(target['Status Kontrak']);
           target['Bandwidth'] = normalizeBandwidth(target['Bandwidth']);
           target['ODP'] = normalizeOdp(target['ODP']);
           target['Jenis Paket'] = normalizeJenisPaket(target['Jenis Paket']);
@@ -3508,6 +3539,7 @@ document.getElementById('importExcelInput').addEventListener('change', e=>{
         } else {
           const rec = { _id: 'imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7) };
           IMPORT_FIELDS.forEach(f=>{ rec[f] = row[f] !== undefined ? row[f] : ''; });
+          if(rec['Status Kontrak']) rec['Status Kontrak'] = normalizeStatus(rec['Status Kontrak']);
           rec['Bandwidth'] = normalizeBandwidth(rec['Bandwidth']);
           rec['ODP'] = normalizeOdp(rec['ODP']);
           rec['Jenis Paket'] = normalizeJenisPaket(rec['Jenis Paket']);
