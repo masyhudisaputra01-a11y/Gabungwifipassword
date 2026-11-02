@@ -791,13 +791,15 @@
     <div class="hero-card" id="pkgBars"></div>
 
     <h2 class="section-title"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Sebaran Lokasi</span> <small id="locCountLabel"></small></h2>
-    <div class="chip-row" id="mapStatusFilter">
-      <button type="button" class="chip active" data-map-status="ALL">Semua</button>
-      <button type="button" class="chip" data-map-status="AKTIF">Aktif</button>
-      <button type="button" class="chip" data-map-status="NONAKTIF">Nonaktif</button>
-      <button type="button" class="chip" data-map-status="ISOLIR">Isolir</button>
-      <button type="button" class="chip" data-map-status="ONT LOS">Ont Los</button>
-      <button type="button" class="chip" data-map-status="ONT DYINGASP">Ont Dyingasp</button>
+    <select class="loc-filter" id="mapStatusFilter">
+      <option value="ALL">Semua Status</option>
+      <option value="AKTIF">Aktif</option>
+      <option value="NONAKTIF">Nonaktif</option>
+      <option value="ISOLIR">Isolir</option>
+      <option value="ONT LOS">Ont Los</option>
+      <option value="ONT DYINGASP">Ont Dyingasp</option>
+    </select>
+    <div class="chip-row" style="margin-top:6px;">
       <button type="button" class="chip" id="mapTileToggle" data-tile="street">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14" style="vertical-align:-2px;"><path d="M8.5 8.5l7 7M4 20l3-3M14 4l6 6-3 3-6-6zM4 14l6 6-3 3-6-6z" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Satelit
@@ -839,14 +841,14 @@
       <option value="instalasi_asc">Tgl Instalasi (Terlama)</option>
       <option value="kontrak_asc">Kontrak Akan Habis Duluan</option>
     </select>
-    <div class="chip-row" id="statusChips">
-      <button class="chip active" data-status="ALL">Semua Status</button>
-      <button class="chip" data-status="AKTIF"><span class="status-dot" style="background:#34D399;"></span>Aktif</button>
-      <button class="chip" data-status="NONAKTIF"><span class="status-dot" style="background:#F87171;"></span>Nonaktif</button>
-      <button class="chip" data-status="ISOLIR"><span class="status-dot" style="background:#FBBF24;"></span>Isolir</button>
-      <button class="chip" data-status="ONT LOS"><span class="status-dot" style="background:#FB923C;"></span>Ont Los</button>
-      <button class="chip" data-status="ONT DYINGASP"><span class="status-dot" style="background:#C084FC;"></span>Ont Dyingasp</button>
-    </div>
+    <select class="loc-filter" id="statusFilter" style="margin-top:6px;">
+      <option value="ALL">Semua Status</option>
+      <option value="AKTIF">Aktif</option>
+      <option value="NONAKTIF">Nonaktif</option>
+      <option value="ISOLIR">Isolir</option>
+      <option value="ONT LOS">Ont Los</option>
+      <option value="ONT DYINGASP">Ont Dyingasp</option>
+    </select>
 
     <div class="chip-row" id="toolsChips" style="margin-top:6px;">
       <button type="button" class="chip" id="groupLocChip">
@@ -1668,7 +1670,7 @@ function jumpFromHeaderStat(kind){
   state.loc = 'ALL';
   document.getElementById('searchInput').value = '';
   document.querySelectorAll('#paketChips .chip').forEach(c=>c.classList.toggle('active', c.dataset.paket==='ALL'));
-  document.querySelectorAll('#statusChips .chip').forEach(c=>c.classList.toggle('active', c.dataset.status===state.status));
+  document.getElementById('statusFilter').value = state.status;
   renderData();
 }
 document.getElementById('hstatTotal').addEventListener('click', ()=>jumpFromHeaderStat('ALL'));
@@ -2004,11 +2006,8 @@ function renderLocMap(){
 
   setTimeout(()=>{ if(_locMapInstance) _locMapInstance.invalidateSize(); }, 200);
 }
-document.getElementById('mapStatusFilter').addEventListener('click', e=>{
-  const btn = e.target.closest('button[data-map-status]');
-  if(!btn) return;
-  mapStatusFilter = btn.dataset.mapStatus;
-  document.querySelectorAll('#mapStatusFilter .chip[data-map-status]').forEach(c=>c.classList.toggle('active', c===btn));
+document.getElementById('mapStatusFilter').addEventListener('change', e=>{
+  mapStatusFilter = e.target.value;
   renderLocMap();
 });
 document.getElementById('mapTileToggle').addEventListener('click', ()=>{
@@ -2258,12 +2257,8 @@ document.getElementById('groupLocChip').addEventListener('click', ()=>{
   document.getElementById('groupLocChip').classList.toggle('active', state.groupByLocation);
   renderData();
 });
-document.getElementById('statusChips').addEventListener('click', e=>{
-  const btn = e.target.closest('.chip');
-  if(!btn || !btn.dataset.status) return;
-  document.querySelectorAll('#statusChips .chip').forEach(c=>c.classList.remove('active'));
-  btn.classList.add('active');
-  state.status = btn.dataset.status;
+document.getElementById('statusFilter').addEventListener('change', e=>{
+  state.status = e.target.value;
   renderData();
 });
 document.getElementById('scanSearchChip').addEventListener('click', () => {
@@ -2346,6 +2341,7 @@ function renderData(){
   document.getElementById('odpFilter').value = state.odp;
   document.getElementById('paketFilter').value = state.paket;
   document.getElementById('bwFilter').value = state.bw;
+  document.getElementById('statusFilter').value = state.status;
   document.getElementById('sortSelect').value = state.sortBy || 'default';
   const list = sortRecords(filteredRecords());
   document.getElementById('resultCount').textContent = `${list.length} hasil dari ${records.length} data`;
