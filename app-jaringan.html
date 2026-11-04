@@ -470,6 +470,12 @@
   .status-badge.st-isolir{color:var(--warn); background:var(--warn-bg);}
   .nonaktif-reason.los{ background:var(--los-bg); border-color:rgba(251,146,60,.3); color:var(--los); }
   .nonaktif-reason.dying{ background:var(--dying-bg); border-color:rgba(192,132,252,.3); color:var(--dying); }
+  .mttr-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center; }
+  .mttr-grid b{ display:block; font-size:20px; font-family:var(--font-display); color:var(--ink); }
+  .mttr-grid span{ font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.4px; }
+  .mttr-odp{ margin-top:12px; font-size:12px; color:var(--ink-soft); line-height:1.7; border-top:1px dashed var(--line); padding-top:10px; }
+  .mttr-odp b{ color:var(--ink); }
+  .rekap-text{ width:100%; min-height:260px; background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:10px; color:var(--ink); font-family:var(--font-mono); font-size:11.5px; line-height:1.5; }
   .status-since{ margin-top:6px; font-size:11px; color:var(--ink-faint); }
   .status-since.stale{ color:var(--danger); font-weight:700; }
   .hist-item{ background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:12px; color:var(--ink); line-height:1.5; }
@@ -800,6 +806,9 @@
 
     <h2 class="section-title"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Status Jaringan</span> <small>ketuk untuk memfilter</small></h2>
     <div class="hero-card" id="statusBars"></div>
+
+    <h2 class="section-title"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Penanganan Gangguan</span> <small>Ont Los &amp; Dyingasp</small></h2>
+    <div class="hero-card" id="mttrCard"></div>
 
     <h2 class="section-title"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>Bandwidth</span> <small>berdasarkan paket</small></h2>
     <div class="hero-card" id="bwBars"></div>
@@ -1137,6 +1146,7 @@ function clearAuditLog(){
 }
 
 /* ---------------- RIWAYAT STATUS ---------------- */
+const APP_VERSION = '2.0';
 const STATUS_HIST_KEY = 'sj_status_history_v1';
 const STALE_DAYS_KEY = 'sj_stale_days_v1';
 const WA_NUM_KEY = 'sj_wa_number_v1';
@@ -1149,7 +1159,12 @@ function recordStatusChange(r, prev, next, note){
   try{
     const h = loadStatusHist();
     const arr = h[r._id] || [];
-    arr.unshift({ ts: now, from: prev, to: next, user: getUsername(), note: note || '' });
+    const entry = { ts: now, from: prev, to: next, user: getUsername(), note: note || '', odp: r['ODP'] || '', loc: r['Lokasi'] || '', name: r['Nama Ruangan'] || '' };
+    if((prev === 'ONT LOS' || prev === 'ONT DYINGASP') && next === 'AKTIF' && r['Status Sejak']){
+      const ms = Date.now() - new Date(r['Status Sejak']).getTime();
+      if(!isNaN(ms) && ms >= 0){ entry.dur = ms; entry.kind = prev; }
+    }
+    arr.unshift(entry);
     h[r._id] = arr.slice(0, 50);
     localStorage.setItem(STATUS_HIST_KEY, JSON.stringify(h));
   }catch(e){}
@@ -1167,6 +1182,150 @@ function getWaNumber(){
   if(n.startsWith('0')) n = '62' + n.slice(1);
   else if(n.startsWith('8')) n = '62' + n;
   return n;
+}
+function applyStatusChange(r, st, note){
+  const prev = statusKontrakVal(r);
+  r['Status Kontrak'] = st;
+  if(!statusHasNote(st)) r['Keterangan Nonaktif'] = '';
+  else if(note) r['Keterangan Nonaktif'] = note;
+  recordStatusChange(r, prev, st, r['Keterangan Nonaktif']);
+  r['Diubah Oleh'] = getUsername();
+  r['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
+  return prev;
+}
+function fmtMs(ms){
+  const h = ms / 3600000;
+  if(h < 1) return Math.max(1, Math.round(ms / 60000)) + ' menit';
+  if(h < 48) return (Math.round(h * 10) / 10) + ' jam';
+  return (Math.round(h / 24 * 10) / 10) + ' hari';
+}
+function gangguanStats(days){
+  const since = Date.now() - days * 86400000;
+  const done = [];
+  Object.values(loadStatusHist()).forEach(arr=>arr.forEach(e=>{ if(e.dur != null && new Date(e.ts).getTime() >= since) done.push(e); }));
+  const ongoing = records.filter(r=>{ const v = statusKontrakVal(r); return v === 'ONT LOS' || v === 'ONT DYINGASP'; });
+  const avg = done.length ? done.reduce((a,e)=>a + e.dur, 0) / done.length : null;
+  const byOdp = {};
+  done.forEach(e=>{ const k = e.odp || 'Tanpa ODP'; (byOdp[k] = byOdp[k] || []).push(e.dur); });
+  return { done, ongoing, avg, byOdp };
+}
+function renderPenanganan(){
+  const el = document.getElementById('mttrCard');
+  if(!el) return;
+  const st = gangguanStats(30);
+  const odpRows = Object.entries(st.byOdp).sort((a,b)=>b[1].length - a[1].length).slice(0,5)
+    .map(([k,v])=>`<b>${esc(k)}</b>: ${v.length}x, rata-rata ${fmtMs(v.reduce((a,b)=>a+b,0) / v.length)}`).join('<br>');
+  el.innerHTML = `
+    <div class="mttr-grid">
+      <div><b>${st.ongoing.length}</b><span>Sedang gangguan</span></div>
+      <div><b>${st.done.length}</b><span>Selesai 30 hari</span></div>
+      <div><b>${st.avg === null ? '-' : fmtMs(st.avg)}</b><span>Rata-rata penanganan</span></div>
+    </div>
+    ${odpRows ? `<div class="mttr-odp">Gangguan selesai per ODP (30 hari):<br>${odpRows}</div>` : `<div class="mttr-odp">Belum ada gangguan yang selesai tercatat. Lama penanganan dihitung otomatis saat status Ont Los / Dyingasp dikembalikan ke Aktif.</div>`}
+    <button type="button" class="btn-secondary" style="margin-top:12px;" onclick="openRekap()">Buat Rekap Gangguan</button>`;
+}
+function buildRekapText(days){
+  const st = gangguanStats(days);
+  const tgl = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const L = [];
+  L.push('REKAP GANGGUAN JARINGAN', 'Polda Sulbar — ' + tgl, 'Periode: ' + (days === 1 ? 'hari ini' : days + ' hari terakhir'), '');
+  const ong = [...st.ongoing].sort((a,b)=>(statusDays(b) ?? -1) - (statusDays(a) ?? -1));
+  L.push('SEDANG GANGGUAN (' + ong.length + ')');
+  if(!ong.length) L.push('- tidak ada');
+  ong.slice(0,30).forEach((r,i)=>{
+    const d = statusDays(r);
+    L.push((i+1) + '. ' + (r['Nama Ruangan']||'-') + ' | ' + (r['Lokasi']||'-') + ' | ' + statusLabel(statusKontrakVal(r)) + (d !== null ? ' | ' + fmtDurasi(d) : '') + (r['ODP'] ? ' | ODP ' + r['ODP'] : '') + (r['Keterangan Nonaktif'] ? ' | ' + r['Keterangan Nonaktif'] : ''));
+  });
+  if(ong.length > 30) L.push('+' + (ong.length - 30) + ' lainnya');
+  L.push('');
+  const done = [...st.done].sort((a,b)=>new Date(b.ts) - new Date(a.ts));
+  L.push('SELESAI DITANGANI (' + done.length + ')');
+  if(!done.length) L.push('- belum ada');
+  done.slice(0,30).forEach((e,i)=>{
+    L.push((i+1) + '. ' + (e.name||'-') + ' | ' + (e.loc||'-') + ' | ' + statusLabel(e.kind) + ' | selesai dalam ' + fmtMs(e.dur) + ' (' + new Date(e.ts).toLocaleDateString('id-ID',{day:'2-digit',month:'short'}) + ')');
+  });
+  if(done.length > 30) L.push('+' + (done.length - 30) + ' lainnya');
+  if(st.avg !== null) L.push('', 'Rata-rata lama penanganan: ' + fmtMs(st.avg));
+  const iso = records.filter(r=>statusKontrakVal(r) === 'ISOLIR').length;
+  if(iso) L.push('Isolir: ' + iso + ' pelanggan');
+  return L.join('\n');
+}
+function openRekap(){
+  const sheet = document.getElementById('modalSheet');
+  sheet.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">Rekap Gangguan</div>
+    <div class="field"><label>Periode</label>
+      <select id="rekapDays"><option value="1">Hari ini</option><option value="7" selected>7 hari terakhir</option><option value="30">30 hari terakhir</option></select>
+    </div>
+    <textarea class="rekap-text" id="rekapText" readonly></textarea>
+    <div class="report-actions" style="margin-top:12px;">
+      <button type="button" class="btn-wa" id="rekapWa">${ICON_SEND_ARROW} Kirim via WhatsApp</button>
+      <button type="button" class="btn-secondary" id="rekapCopy">⧉ Salin Teks</button>
+      <button type="button" class="btn-ghost" id="rekapClose">Tutup</button>
+    </div>`;
+  const refresh = ()=>{ document.getElementById('rekapText').value = buildRekapText(parseInt(document.getElementById('rekapDays').value,10)); };
+  refresh();
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('rekapDays').addEventListener('change', refresh);
+  document.getElementById('rekapWa').addEventListener('click', ()=>window.open(waUrlDefault(document.getElementById('rekapText').value), '_blank'));
+  document.getElementById('rekapCopy').addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText(document.getElementById('rekapText').value); showToast('Rekap disalin'); }
+    catch(e){ showToast('Gagal menyalin, salin manual dari kotak teks'); }
+  });
+  document.getElementById('rekapClose').addEventListener('click', closeModal);
+}
+function openQuickStatus(id){
+  const r = records.find(x=>x._id===id);
+  if(!r) return;
+  const cur = statusKontrakVal(r);
+  const sheet = document.getElementById('modalSheet');
+  sheet.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">Ubah Status — ${esc(r['Nama Ruangan']||'')}</div>
+    <div class="edit-hint">Sekarang: <b>${statusLabel(cur)}</b>${statusDays(r) !== null ? ' (sejak ' + fmtDurasi(statusDays(r)) + ')' : ''}</div>
+    <form id="quickStatusForm">
+      <div class="field"><label>Status Baru</label>
+        <select name="status" id="qsSelect">
+          ${['AKTIF','NONAKTIF','ISOLIR','ONT LOS','ONT DYINGASP'].map(v=>`<option value="${v}" ${v===cur?'selected':''}>${statusLabel(v)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field" id="qsNoteField" style="display:${statusHasNote(cur) ? 'block' : 'none'};">
+        <label>Keterangan <span class="hint">opsional</span></label>
+        <textarea name="note" placeholder="cth. kabel putus di ODP, listrik padam">${esc(r['Keterangan Nonaktif']||'')}</textarea>
+      </div>
+      <button type="submit" class="btn-primary">Simpan Status</button>
+      <button type="button" class="btn-ghost" id="qsCancel">Batal</button>
+    </form>`;
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('qsCancel').addEventListener('click', closeModal);
+  document.getElementById('qsSelect').addEventListener('change', e=>{
+    document.getElementById('qsNoteField').style.display = statusHasNote(e.target.value) ? 'block' : 'none';
+  });
+  document.getElementById('quickStatusForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const st = fd.get('status');
+    const note = String(fd.get('note')||'').trim();
+    const sinceMs = r['Status Sejak'] ? Date.now() - new Date(r['Status Sejak']).getTime() : null;
+    const prev = applyStatusChange(r, st, note);
+    if(statusHasNote(st)) r['Keterangan Nonaktif'] = note;
+    saveRecords();
+    logActivity('Ubah Status', `${r['Nama Ruangan']||''}: ${statusLabel(prev)} -> ${statusLabel(st)}`);
+    closeModal();
+    renderData();
+    renderDashboard();
+    if(prev === st){ showToast('Status tidak berubah'); return; }
+    if((prev === 'ONT LOS' || prev === 'ONT DYINGASP') && st === 'AKTIF' && sinceMs !== null && sinceMs >= 0) showToast(`Gangguan selesai dalam ${fmtMs(sinceMs)}`);
+    else showToast(`Status diubah menjadi ${statusLabel(st)}`);
+    if(st === 'ONT LOS' || st === 'ONT DYINGASP'){
+      setTimeout(()=>{
+        if(confirm(`Status diubah menjadi ${statusLabel(st)}. Buat laporan gangguan sekarang?`)){
+          openReportForm(r._id, `${statusLabel(st)}${note ? ' - ' + note : ''}`);
+        }
+      }, 300);
+    }
+  });
 }
 function waUrlDefault(text){ return 'https://wa.me/' + getWaNumber() + '?text=' + encodeURIComponent(text); }
 
@@ -1269,7 +1428,7 @@ function notifPermGranted(){
 function requestNotifPermission(){
   if(typeof Notification === 'undefined'){ showToast('Perangkat/browser ini tidak mendukung notifikasi'); return; }
   Notification.requestPermission().then(perm=>{
-    if(perm === 'granted'){ showToast('Notifikasi kontrak diaktifkan'); checkContractNotifications(true); }
+    if(perm === 'granted'){ showToast('Notifikasi kontrak & gangguan diaktifkan'); checkContractNotifications(true); }
     else showToast('Izin notifikasi ditolak');
     openSettings();
   });
@@ -1282,12 +1441,14 @@ function checkContractNotifications(force){
   localStorage.setItem(NOTIF_LAST_CHECK_KEY, today);
   const overdue = records.filter(r=>{ const d = daysUntil(r['Tanggal Berakhir Kontrak']); return d !== null && d < 0; }).length;
   const soon = records.filter(r=>{ const d = daysUntil(r['Tanggal Berakhir Kontrak']); return d !== null && d >= 0 && d <= 30; }).length;
-  if(overdue === 0 && soon === 0) return;
+  const staleN = records.filter(r=>{ const v = statusKontrakVal(r); const d = statusDays(r); return (v === 'ONT LOS' || v === 'ONT DYINGASP') && d !== null && d >= staleDays(); }).length;
+  if(overdue === 0 && soon === 0 && staleN === 0) return;
   try{
     const parts = [];
+    if(staleN) parts.push(`${staleN} gangguan > ${staleDays()} hari belum tertangani`);
     if(overdue) parts.push(`${overdue} kontrak lewat jatuh tempo`);
     if(soon) parts.push(`${soon} kontrak akan berakhir ≤30 hari`);
-    new Notification('SIM Jaringan+ — Perhatian Kontrak', { body: parts.join(', '), icon: 'icon-192.png' });
+    new Notification('SIM Jaringan+ — Perhatian', { body: parts.join(', '), icon: 'icon-192.png' });
   }catch(e){}
 }
 
@@ -1550,13 +1711,48 @@ function lockFail(scope){
   try{ localStorage.setItem('sj_lockfail_' + scope, JSON.stringify(s)); }catch(e){}
   return s;
 }
-function lockOk(scope){ try{ localStorage.removeItem('sj_lockfail_' + scope); }catch(e){} }
+function lockOk(scope){ try{ localStorage.removeItem('sj_lockfail_' + scope); localStorage.removeItem('sj_resetreq_' + scope); }catch(e){} }
 function lockWait(scope){ return Math.max(0, Math.ceil((_lockState(scope).until - Date.now()) / 1000)); }
+function recoveryCodeNew(){
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const a = new Uint8Array(8); crypto.getRandomValues(a);
+  let c = ''; a.forEach((x,i)=>{ c += A[x % 32]; if(i === 3) c += '-'; });
+  return c;
+}
+function recoverySave(key){ const c = recoveryCodeNew(); localStorage.setItem(key + '_rec', pinEncode(c.replace('-',''))); return c; }
+function recoveryShow(code){
+  setTimeout(()=>alert('KODE PEMULIHAN PIN: ' + code + '\n\nCatat dan simpan di tempat aman (bukan di HP ini). Kode dipakai kalau lupa PIN dan hanya ditampilkan sekali ini.'), 150);
+}
+function recoveryOk(key, input){ return pinMatches(localStorage.getItem(key + '_rec'), String(input||'').toUpperCase().replace(/[^A-Z0-9]/g,'')); }
+/* Lupa PIN: butuh kode pemulihan, atau permintaan reset yang baru bisa dijalankan setelah 24 jam */
+function forgotPinFlow(scope, recKey, doReset){
+  if(localStorage.getItem(recKey + '_rec')){
+    const w = lockWait(scope + '_rec');
+    if(w > 0){ alert('Terlalu banyak percobaan kode pemulihan. Coba lagi dalam ' + w + ' detik.'); return; }
+    const code = prompt('Masukkan KODE PEMULIHAN PIN (format XXXX-XXXX).\n\nKosongkan dan tekan OK kalau tidak punya kodenya (reset akan menunggu 24 jam).');
+    if(code === null) return;
+    if(code.trim()){
+      if(recoveryOk(recKey, code)){ lockOk(scope + '_rec'); doReset(); return; }
+      lockFail(scope + '_rec'); alert('Kode pemulihan salah.'); return;
+    }
+  }
+  const k = 'sj_resetreq_' + scope;
+  const t = parseInt(localStorage.getItem(k), 10);
+  if(!t){
+    localStorage.setItem(k, String(Date.now()));
+    alert('Permintaan reset PIN dicatat. Reset baru bisa dilakukan setelah 24 jam dari sekarang. Kalau PIN yang benar dimasukkan sebelum itu, permintaan dibatalkan otomatis.');
+    return;
+  }
+  const left = t + 86400000 - Date.now();
+  if(left > 0){ alert('Reset PIN baru bisa dilakukan dalam ' + Math.ceil(left / 3600000) + ' jam lagi.'); return; }
+  if(confirm('Reset PIN sekarang? PIN akan dihapus.')){ localStorage.removeItem(k); doReset(); }
+}
+
 
 const PIN_KEY = 'sj_pin_v1';
 function hasPinSet(){ return !!localStorage.getItem(PIN_KEY); }
-function savePin(pin){ localStorage.setItem(PIN_KEY, pinEncode(pin)); }
-function clearPin(){ localStorage.removeItem(PIN_KEY); }
+function savePin(pin){ localStorage.setItem(PIN_KEY, pinEncode(pin)); recoveryShow(recoverySave(PIN_KEY)); }
+function clearPin(){ localStorage.removeItem(PIN_KEY); localStorage.removeItem(PIN_KEY + '_rec'); }
 function checkPin(pin){ return pinMatches(localStorage.getItem(PIN_KEY), pin); }
 
 let _lockBuffer = '';
@@ -1593,11 +1789,11 @@ document.getElementById('lockKeypad').addEventListener('click', e=>{
   if(btn) lockKeyPress(btn.dataset.k);
 });
 document.getElementById('lockForgotBtn').addEventListener('click', ()=>{
-  if(confirm('Reset PIN akan menghapus PIN yang tersimpan (data lain tidak terpengaruh). Lanjutkan?')){
+  forgotPinFlow('sj', PIN_KEY, ()=>{
     clearPin();
     document.getElementById('lockOverlay').classList.remove('show');
     showToast('PIN dihapus. Atur PIN baru lewat menu Pengaturan.');
-  }
+  });
 });
 function isHubManaged(){
   return new URLSearchParams(location.search).get('hublock') === '1';
@@ -1813,7 +2009,7 @@ function openAbout(){
     <div class="settings-section">
       <h3>Versi Aplikasi</h3>
       <div class="pin-status-row" style="display:block;">
-        <span>Data Inet v1.0<small>${records.length} titik layanan terdaftar</small></span>
+        <span>Data Inet v${APP_VERSION}<small>${records.length} titik layanan terdaftar</small></span>
       </div>
     </div>
     <button type="button" class="btn-ghost" id="closeModalBtn">Tutup</button>
@@ -2079,6 +2275,8 @@ function renderDashboard(){
       <div class="bar-val">${v} <small style="color:var(--ink-faint);">(${Math.round(v/stTotal*100)}%)</small></div>
     </div>`;
   }).join('');
+
+  renderPenanganan();
 
   const bwMap = {};
   records.forEach(r=>{ const b = r['Bandwidth']||'Tidak diketahui'; bwMap[b]=(bwMap[b]||0)+1; });
@@ -2637,6 +2835,7 @@ function recordCardHtml(r){
       </div>
       <div class="rec-actions">
         <button onclick="openDetail('${r._id}')">Detail</button>
+        <button onclick="openQuickStatus('${r._id}')">Status</button>
         <button class="report" onclick="openReportForm('${r._id}')">Lapor</button>
         <button class="danger" onclick="deleteRecord('${r._id}')">Hapus</button>
       </div>
@@ -2748,15 +2947,7 @@ function bulkChangeStatus(){
     const st = fd.get('status');
     const note = String(fd.get('note')||'').trim();
     const list = records.filter(r=>bulkSelected.has(r._id));
-    list.forEach(r=>{
-      const prev = statusKontrakVal(r);
-      r['Status Kontrak'] = st;
-      if(!statusHasNote(st)) r['Keterangan Nonaktif'] = '';
-      else if(note) r['Keterangan Nonaktif'] = note;
-      recordStatusChange(r, prev, st, r['Keterangan Nonaktif']);
-      r['Diubah Oleh'] = getUsername();
-      r['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
-    });
+    list.forEach(r=>applyStatusChange(r, st, note));
     saveRecords();
     logActivity('Ubah Status Massal', `${list.length} data -> ${statusLabel(st)}`);
     bulkSelected.clear();

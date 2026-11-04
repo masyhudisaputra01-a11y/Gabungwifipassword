@@ -1583,8 +1583,43 @@ function lockFail(scope){
   try{ localStorage.setItem('sj_lockfail_' + scope, JSON.stringify(s)); }catch(e){}
   return s;
 }
-function lockOk(scope){ try{ localStorage.removeItem('sj_lockfail_' + scope); }catch(e){} }
+function lockOk(scope){ try{ localStorage.removeItem('sj_lockfail_' + scope); localStorage.removeItem('sj_resetreq_' + scope); }catch(e){} }
 function lockWait(scope){ return Math.max(0, Math.ceil((_lockState(scope).until - Date.now()) / 1000)); }
+function recoveryCodeNew(){
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const a = new Uint8Array(8); crypto.getRandomValues(a);
+  let c = ''; a.forEach((x,i)=>{ c += A[x % 32]; if(i === 3) c += '-'; });
+  return c;
+}
+function recoverySave(key){ const c = recoveryCodeNew(); localStorage.setItem(key + '_rec', pinEncode(c.replace('-',''))); return c; }
+function recoveryShow(code){
+  setTimeout(()=>alert('KODE PEMULIHAN PIN: ' + code + '\n\nCatat dan simpan di tempat aman (bukan di HP ini). Kode dipakai kalau lupa PIN dan hanya ditampilkan sekali ini.'), 150);
+}
+function recoveryOk(key, input){ return pinMatches(localStorage.getItem(key + '_rec'), String(input||'').toUpperCase().replace(/[^A-Z0-9]/g,'')); }
+/* Lupa PIN: butuh kode pemulihan, atau permintaan reset yang baru bisa dijalankan setelah 24 jam */
+function forgotPinFlow(scope, recKey, doReset){
+  if(localStorage.getItem(recKey + '_rec')){
+    const w = lockWait(scope + '_rec');
+    if(w > 0){ alert('Terlalu banyak percobaan kode pemulihan. Coba lagi dalam ' + w + ' detik.'); return; }
+    const code = prompt('Masukkan KODE PEMULIHAN PIN (format XXXX-XXXX).\n\nKosongkan dan tekan OK kalau tidak punya kodenya (reset akan menunggu 24 jam).');
+    if(code === null) return;
+    if(code.trim()){
+      if(recoveryOk(recKey, code)){ lockOk(scope + '_rec'); doReset(); return; }
+      lockFail(scope + '_rec'); alert('Kode pemulihan salah.'); return;
+    }
+  }
+  const k = 'sj_resetreq_' + scope;
+  const t = parseInt(localStorage.getItem(k), 10);
+  if(!t){
+    localStorage.setItem(k, String(Date.now()));
+    alert('Permintaan reset PIN dicatat. Reset baru bisa dilakukan setelah 24 jam dari sekarang. Kalau PIN yang benar dimasukkan sebelum itu, permintaan dibatalkan otomatis.');
+    return;
+  }
+  const left = t + 86400000 - Date.now();
+  if(left > 0){ alert('Reset PIN baru bisa dilakukan dalam ' + Math.ceil(left / 3600000) + ' jam lagi.'); return; }
+  if(confirm('Reset PIN sekarang? PIN akan dihapus.')){ localStorage.removeItem(k); doReset(); }
+}
+
 
 function hasAdminPin(){ return !!localStorage.getItem(ADMIN_PIN_KEY); }
 function hasStaffPin(){ return !!localStorage.getItem(STAFF_PIN_KEY); }
@@ -1609,12 +1644,13 @@ function openPinManager(role){
     if(!/^\d{4}$/.test(p1)){ showToast('PIN harus 4 digit angka'); return; }
     if(p1 !== p2){ showToast('PIN tidak sama'); return; }
     localStorage.setItem(key, pinEncode(p1));
+    if(key === ADMIN_PIN_KEY) recoveryShow(recoverySave(key)); else localStorage.removeItem(key + '_rec');
     showToast('PIN berhasil disimpan');
     closeModal(overlay); renderSettings();
   });
   if(isSet){
     overlay.querySelector('#removePinBtn').addEventListener('click', () => {
-      localStorage.removeItem(key);
+      localStorage.removeItem(key); localStorage.removeItem(key + '_rec');
       showToast('PIN dihapus');
       closeModal(overlay); renderSettings();
     });
@@ -1674,13 +1710,14 @@ function onLockKey(k){
   }
 }
 document.getElementById('lockForgotBtn').addEventListener('click', () => {
-  if(confirm('Reset PIN akan menghapus PIN Admin & Staff yang tersimpan (data WiFi tidak terpengaruh). Lanjutkan?')){
+  forgotPinFlow('wv', ADMIN_PIN_KEY, () => {
     localStorage.removeItem(ADMIN_PIN_KEY); localStorage.removeItem(STAFF_PIN_KEY);
+    localStorage.removeItem(ADMIN_PIN_KEY + '_rec');
     currentRole = 'admin';
     document.getElementById('lockScreen').style.display = 'none';
     renderHeaderStats(); refreshCurrentView();
     showToast('PIN dihapus. Atur PIN baru lewat menu Pengaturan.');
-  }
+  });
 });
 function lockNow(){
   if(!hasAnyPin()) return;
