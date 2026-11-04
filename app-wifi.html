@@ -1511,11 +1511,86 @@ async function gdriveDownload(token){
 }
 
 /* ================= PIN MANAGEMENT ================= */
+/* PIN: hash + pembatasan percobaan */
+/* ---------------- PIN: HASH + PEMBATASAN PERCOBAAN ---------------- */
+function _sha256hex(str){
+  if(!_sha256hex.K){
+    const K = [], H = []; let n = 2, c = 0;
+    const frac = x => x - Math.floor(x);
+    while(c < 64){
+      let p = true;
+      for(let d = 2; d * d <= n; d++){ if(n % d === 0){ p = false; break; } }
+      if(p){ K.push(Math.floor(frac(Math.cbrt(n)) * 4294967296)); if(c < 8) H.push(Math.floor(frac(Math.sqrt(n)) * 4294967296)); c++; }
+      n++;
+    }
+    _sha256hex.K = K; _sha256hex.H = H;
+  }
+  const K = _sha256hex.K;
+  const bytes = [];
+  for(let i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i) & 255);
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while(bytes.length % 64 !== 56) bytes.push(0);
+  const hi = Math.floor(bitLen / 4294967296), lo = bitLen >>> 0;
+  bytes.push((hi>>>24)&255,(hi>>>16)&255,(hi>>>8)&255,hi&255,(lo>>>24)&255,(lo>>>16)&255,(lo>>>8)&255,lo&255);
+  const w = new Array(64);
+  let h = _sha256hex.H.slice();
+  for(let o = 0; o < bytes.length; o += 64){
+    for(let i = 0; i < 16; i++) w[i] = (bytes[o+4*i]<<24)|(bytes[o+4*i+1]<<16)|(bytes[o+4*i+2]<<8)|bytes[o+4*i+3];
+    for(let i = 16; i < 64; i++){
+      const a = w[i-15], b = w[i-2];
+      const s0 = ((a>>>7)|(a<<25)) ^ ((a>>>18)|(a<<14)) ^ (a>>>3);
+      const s1 = ((b>>>17)|(b<<15)) ^ ((b>>>19)|(b<<13)) ^ (b>>>10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+    for(let i = 0; i < 64; i++){
+      const S1 = ((e>>>6)|(e<<26)) ^ ((e>>>11)|(e<<21)) ^ ((e>>>25)|(e<<7));
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (hh + S1 + ch + K[i] + w[i]) | 0;
+      const S0 = ((a>>>2)|(a<<30)) ^ ((a>>>13)|(a<<19)) ^ ((a>>>22)|(a<<10));
+      const mj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + mj) | 0;
+      hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h = [(h[0]+a)|0,(h[1]+b)|0,(h[2]+c)|0,(h[3]+d)|0,(h[4]+e)|0,(h[5]+f)|0,(h[6]+g)|0,(h[7]+hh)|0];
+  }
+  return h.map(x => ('00000000' + (x>>>0).toString(16)).slice(-8)).join('');
+}
+const PIN_ITER = 10000;
+function pinHash(pin, salt){
+  let h = _sha256hex(salt + ':' + pin);
+  for(let i = 0; i < PIN_ITER; i++) h = _sha256hex(h + salt + pin);
+  return h;
+}
+function pinEncode(pin){
+  const a = new Uint8Array(16); crypto.getRandomValues(a);
+  const salt = Array.from(a, x => ('0' + x.toString(16)).slice(-2)).join('');
+  return 'v2$' + salt + '$' + pinHash(pin, salt);
+}
+function pinMatches(stored, pin){
+  if(!stored) return false;
+  if(stored.startsWith('v2$')){
+    const parts = stored.split('$');
+    return parts.length === 3 && pinHash(pin, parts[1]) === parts[2];
+  }
+  try{ return atob(stored) === pin; }catch(e){ return false; }
+}
+function _lockState(scope){ try{ return JSON.parse(localStorage.getItem('sj_lockfail_' + scope)) || { n:0, until:0 }; }catch(e){ return { n:0, until:0 }; } }
+function lockFail(scope){
+  const s = _lockState(scope); s.n++;
+  if(s.n >= 5) s.until = Date.now() + Math.min(300, 30 * Math.pow(2, s.n - 5)) * 1000;
+  try{ localStorage.setItem('sj_lockfail_' + scope, JSON.stringify(s)); }catch(e){}
+  return s;
+}
+function lockOk(scope){ try{ localStorage.removeItem('sj_lockfail_' + scope); }catch(e){} }
+function lockWait(scope){ return Math.max(0, Math.ceil((_lockState(scope).until - Date.now()) / 1000)); }
+
 function hasAdminPin(){ return !!localStorage.getItem(ADMIN_PIN_KEY); }
 function hasStaffPin(){ return !!localStorage.getItem(STAFF_PIN_KEY); }
 function hasAnyPin(){ return hasAdminPin() || hasStaffPin(); }
-function checkAdminPin(pin){ return hasAdminPin() && atob(localStorage.getItem(ADMIN_PIN_KEY)) === pin; }
-function checkStaffPin(pin){ return hasStaffPin() && atob(localStorage.getItem(STAFF_PIN_KEY)) === pin; }
+function checkAdminPin(pin){ return pinMatches(localStorage.getItem(ADMIN_PIN_KEY), pin); }
+function checkStaffPin(pin){ return pinMatches(localStorage.getItem(STAFF_PIN_KEY), pin); }
 
 function openPinManager(role){
   const key = role === 'admin' ? ADMIN_PIN_KEY : STAFF_PIN_KEY;
@@ -1533,7 +1608,7 @@ function openPinManager(role){
     const p2 = overlay.querySelector('#newPin2').value.trim();
     if(!/^\d{4}$/.test(p1)){ showToast('PIN harus 4 digit angka'); return; }
     if(p1 !== p2){ showToast('PIN tidak sama'); return; }
-    localStorage.setItem(key, btoa(p1));
+    localStorage.setItem(key, pinEncode(p1));
     showToast('PIN berhasil disimpan');
     closeModal(overlay); renderSettings();
   });
@@ -1571,12 +1646,16 @@ function onLockKey(k){
   renderLockDots();
   if(pinBuffer.length === 4){
     setTimeout(() => {
+      const _w = lockWait('wv');
+      if(_w > 0){ document.getElementById('lockMsg').textContent = `Terlalu banyak percobaan. Coba lagi dalam ${_w} detik`; pinBuffer = ''; renderLockDots(); return; }
       if(checkAdminPin(pinBuffer)){
+        lockOk('wv');
         currentRole = 'admin';
         document.getElementById('lockScreen').style.display = 'none';
         pinBuffer = ''; renderLockDots();
         renderHeaderStats(); refreshCurrentView();
       } else if(checkStaffPin(pinBuffer)){
+        lockOk('wv');
         currentRole = 'staff';
         document.getElementById('lockScreen').style.display = 'none';
         pinBuffer = ''; renderLockDots();
@@ -1584,7 +1663,9 @@ function onLockKey(k){
         if(!document.getElementById('viewData').hidden || !document.getElementById('viewDashboard').hidden){} 
         document.getElementById('fabAdd').style.display = 'none';
       } else {
-        document.getElementById('lockMsg').textContent = 'PIN salah, coba lagi';
+        lockFail('wv');
+        const _w2 = lockWait('wv');
+        document.getElementById('lockMsg').textContent = _w2 > 0 ? `Terlalu banyak percobaan. Coba lagi dalam ${_w2} detik` : 'PIN salah, coba lagi';
         document.getElementById('lockDots').classList.add('shake');
         setTimeout(() => document.getElementById('lockDots').classList.remove('shake'), 350);
         pinBuffer = ''; setTimeout(renderLockDots, 200);

@@ -470,6 +470,13 @@
   .status-badge.st-isolir{color:var(--warn); background:var(--warn-bg);}
   .nonaktif-reason.los{ background:var(--los-bg); border-color:rgba(251,146,60,.3); color:var(--los); }
   .nonaktif-reason.dying{ background:var(--dying-bg); border-color:rgba(192,132,252,.3); color:var(--dying); }
+  .status-since{ margin-top:6px; font-size:11px; color:var(--ink-faint); }
+  .status-since.stale{ color:var(--danger); font-weight:700; }
+  .hist-item{ background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:12px; color:var(--ink); line-height:1.5; }
+  .hist-item small{ display:block; color:var(--ink-faint); font-size:10.5px; font-family:var(--font-mono); }
+  .status-bar-row{ cursor:pointer; }
+  .status-bar-row .bar-label{ display:flex; align-items:center; gap:6px; }
+  .status-bar-row .status-dot{ width:8px; height:8px; }
   .status-badge.st-ontlos{color:var(--los); background:var(--los-bg);}
   .status-badge.st-dyingasp{color:var(--dying); background:var(--dying-bg);}
   .rec-detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);}
@@ -791,6 +798,9 @@
       </div>
     </div>
 
+    <h2 class="section-title"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Status Jaringan</span> <small>ketuk untuk memfilter</small></h2>
+    <div class="hero-card" id="statusBars"></div>
+
     <h2 class="section-title"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>Bandwidth</span> <small>berdasarkan paket</small></h2>
     <div class="hero-card" id="bwBars"></div>
 
@@ -842,6 +852,7 @@
     <select class="loc-filter" id="bwFilter" style="margin-top:6px;"><option value="ALL">Semua Bandwidth</option></select>
     <select class="loc-filter" id="sortSelect" style="margin-top:6px;">
       <option value="default">Urutkan: Terbaru Diubah</option>
+      <option value="status_problem">Status: Bermasalah di Atas</option>
       <option value="nama_asc">Nama Ruangan (A-Z)</option>
       <option value="nama_desc">Nama Ruangan (Z-A)</option>
       <option value="instalasi_desc">Tgl Instalasi (Terbaru)</option>
@@ -1015,6 +1026,7 @@
       Pulihkan dari Google Drive
     </button>
     <div class="hint" id="gdriveStatus" style="margin-top:6px;"></div>
+    <div class="hint" style="margin-top:4px;">Saat backup, kamu bisa mengisi kata sandi agar file di Drive terenkripsi (disarankan, karena memuat password WiFi).</div>
   </section>
 </main>
 
@@ -1123,6 +1135,40 @@ function getAuditLog(){
 function clearAuditLog(){
   localStorage.removeItem(AUDIT_LOG_KEY);
 }
+
+/* ---------------- RIWAYAT STATUS ---------------- */
+const STATUS_HIST_KEY = 'sj_status_history_v1';
+const STALE_DAYS_KEY = 'sj_stale_days_v1';
+const WA_NUM_KEY = 'sj_wa_number_v1';
+function staleDays(){ const v = parseInt(localStorage.getItem(STALE_DAYS_KEY),10); return v > 0 ? v : 3; }
+function loadStatusHist(){ try{ return JSON.parse(localStorage.getItem(STATUS_HIST_KEY)) || {}; }catch(e){ return {}; } }
+function getStatusHist(id){ return loadStatusHist()[id] || []; }
+function recordStatusChange(r, prev, next, note){
+  if(!r || prev === next) return;
+  const now = new Date().toISOString();
+  try{
+    const h = loadStatusHist();
+    const arr = h[r._id] || [];
+    arr.unshift({ ts: now, from: prev, to: next, user: getUsername(), note: note || '' });
+    h[r._id] = arr.slice(0, 50);
+    localStorage.setItem(STATUS_HIST_KEY, JSON.stringify(h));
+  }catch(e){}
+  r['Status Sejak'] = now;
+}
+function statusDays(r){
+  const t = r && r['Status Sejak'];
+  if(!t) return null;
+  const d = Math.floor((Date.now() - new Date(t).getTime()) / 86400000);
+  return isNaN(d) ? null : Math.max(0, d);
+}
+function fmtDurasi(d){ return d === 0 ? 'hari ini' : d + ' hari'; }
+function getWaNumber(){
+  let n = String(localStorage.getItem(WA_NUM_KEY)||'').replace(/\D/g,'');
+  if(n.startsWith('0')) n = '62' + n.slice(1);
+  else if(n.startsWith('8')) n = '62' + n;
+  return n;
+}
+function waUrlDefault(text){ return 'https://wa.me/' + getWaNumber() + '?text=' + encodeURIComponent(text); }
 
 /* ---------------- TEMPAT SAMPAH (SOFT DELETE) ---------------- */
 const TRASH_KEY = 'sj_trash_v1';
@@ -1303,7 +1349,7 @@ function matchStatusFilter(r, st){
   if(st === 'MASALAH') return isMasalah(v);
   return v === st;
 }
-function statusLabel(v){ return ({'AKTIF':'Aktif','ISOLIR':'Isolir','NONAKTIF':'Nonaktif','ONT LOS':'Ont Los','ONT DYINGASP':'Ont Dyingasp'})[v] || v; }
+function statusLabel(v){ return ({'AKTIF':'Aktif','ISOLIR':'Isolir','NONAKTIF':'Nonaktif','ONT LOS':'Ont Los','ONT DYINGASP':'Ont Dyingasp','BARU':'Data baru'})[v] || v; }
 function statusBadge(r){
   const v = statusKontrakVal(r);
   const ico = {
@@ -1433,11 +1479,85 @@ function applyTextSize(key){
 function currentTextSize(){ return localStorage.getItem(TEXTSIZE_KEY) || 'medium'; }
 
 /* ---------------- PIN LOCK ---------------- */
+/* ---------------- PIN: HASH + PEMBATASAN PERCOBAAN ---------------- */
+function _sha256hex(str){
+  if(!_sha256hex.K){
+    const K = [], H = []; let n = 2, c = 0;
+    const frac = x => x - Math.floor(x);
+    while(c < 64){
+      let p = true;
+      for(let d = 2; d * d <= n; d++){ if(n % d === 0){ p = false; break; } }
+      if(p){ K.push(Math.floor(frac(Math.cbrt(n)) * 4294967296)); if(c < 8) H.push(Math.floor(frac(Math.sqrt(n)) * 4294967296)); c++; }
+      n++;
+    }
+    _sha256hex.K = K; _sha256hex.H = H;
+  }
+  const K = _sha256hex.K;
+  const bytes = [];
+  for(let i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i) & 255);
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while(bytes.length % 64 !== 56) bytes.push(0);
+  const hi = Math.floor(bitLen / 4294967296), lo = bitLen >>> 0;
+  bytes.push((hi>>>24)&255,(hi>>>16)&255,(hi>>>8)&255,hi&255,(lo>>>24)&255,(lo>>>16)&255,(lo>>>8)&255,lo&255);
+  const w = new Array(64);
+  let h = _sha256hex.H.slice();
+  for(let o = 0; o < bytes.length; o += 64){
+    for(let i = 0; i < 16; i++) w[i] = (bytes[o+4*i]<<24)|(bytes[o+4*i+1]<<16)|(bytes[o+4*i+2]<<8)|bytes[o+4*i+3];
+    for(let i = 16; i < 64; i++){
+      const a = w[i-15], b = w[i-2];
+      const s0 = ((a>>>7)|(a<<25)) ^ ((a>>>18)|(a<<14)) ^ (a>>>3);
+      const s1 = ((b>>>17)|(b<<15)) ^ ((b>>>19)|(b<<13)) ^ (b>>>10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+    for(let i = 0; i < 64; i++){
+      const S1 = ((e>>>6)|(e<<26)) ^ ((e>>>11)|(e<<21)) ^ ((e>>>25)|(e<<7));
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (hh + S1 + ch + K[i] + w[i]) | 0;
+      const S0 = ((a>>>2)|(a<<30)) ^ ((a>>>13)|(a<<19)) ^ ((a>>>22)|(a<<10));
+      const mj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + mj) | 0;
+      hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h = [(h[0]+a)|0,(h[1]+b)|0,(h[2]+c)|0,(h[3]+d)|0,(h[4]+e)|0,(h[5]+f)|0,(h[6]+g)|0,(h[7]+hh)|0];
+  }
+  return h.map(x => ('00000000' + (x>>>0).toString(16)).slice(-8)).join('');
+}
+const PIN_ITER = 10000;
+function pinHash(pin, salt){
+  let h = _sha256hex(salt + ':' + pin);
+  for(let i = 0; i < PIN_ITER; i++) h = _sha256hex(h + salt + pin);
+  return h;
+}
+function pinEncode(pin){
+  const a = new Uint8Array(16); crypto.getRandomValues(a);
+  const salt = Array.from(a, x => ('0' + x.toString(16)).slice(-2)).join('');
+  return 'v2$' + salt + '$' + pinHash(pin, salt);
+}
+function pinMatches(stored, pin){
+  if(!stored) return false;
+  if(stored.startsWith('v2$')){
+    const parts = stored.split('$');
+    return parts.length === 3 && pinHash(pin, parts[1]) === parts[2];
+  }
+  try{ return atob(stored) === pin; }catch(e){ return false; }
+}
+function _lockState(scope){ try{ return JSON.parse(localStorage.getItem('sj_lockfail_' + scope)) || { n:0, until:0 }; }catch(e){ return { n:0, until:0 }; } }
+function lockFail(scope){
+  const s = _lockState(scope); s.n++;
+  if(s.n >= 5) s.until = Date.now() + Math.min(300, 30 * Math.pow(2, s.n - 5)) * 1000;
+  try{ localStorage.setItem('sj_lockfail_' + scope, JSON.stringify(s)); }catch(e){}
+  return s;
+}
+function lockOk(scope){ try{ localStorage.removeItem('sj_lockfail_' + scope); }catch(e){} }
+function lockWait(scope){ return Math.max(0, Math.ceil((_lockState(scope).until - Date.now()) / 1000)); }
+
 const PIN_KEY = 'sj_pin_v1';
 function hasPinSet(){ return !!localStorage.getItem(PIN_KEY); }
-function savePin(pin){ localStorage.setItem(PIN_KEY, btoa(pin)); }
+function savePin(pin){ localStorage.setItem(PIN_KEY, pinEncode(pin)); }
 function clearPin(){ localStorage.removeItem(PIN_KEY); }
-function checkPin(pin){ return hasPinSet() && atob(localStorage.getItem(PIN_KEY)) === pin; }
+function checkPin(pin){ return pinMatches(localStorage.getItem(PIN_KEY), pin); }
 
 let _lockBuffer = '';
 function renderLockDots(){
@@ -1448,15 +1568,20 @@ function lockKeyPress(k){
   const msg = document.getElementById('lockMsg');
   if(k === 'back'){ _lockBuffer = _lockBuffer.slice(0,-1); renderLockDots(); return; }
   if(k === 'reset'){ _lockBuffer = ''; renderLockDots(); msg.textContent=''; return; }
+  const _w0 = lockWait('sj');
+  if(_w0 > 0){ msg.textContent = `Terlalu banyak percobaan. Coba lagi dalam ${_w0} detik`; return; }
   if(_lockBuffer.length >= 4) return;
   _lockBuffer += k;
   renderLockDots();
   if(_lockBuffer.length === 4){
     if(checkPin(_lockBuffer)){
+      lockOk('sj');
       document.getElementById('lockOverlay').classList.remove('show');
       _lockBuffer = '';
     } else {
-      msg.textContent = 'PIN salah, coba lagi';
+      lockFail('sj');
+      const _w1 = lockWait('sj');
+      msg.textContent = _w1 > 0 ? `Terlalu banyak percobaan. Coba lagi dalam ${_w1} detik` : 'PIN salah, coba lagi';
       const dotsWrap = document.getElementById('lockDots');
       dotsWrap.classList.add('shake');
       setTimeout(()=>{ dotsWrap.classList.remove('shake'); _lockBuffer=''; renderLockDots(); }, 400);
@@ -1569,6 +1694,18 @@ function openSettings(){
     </div>
 
     <div class="settings-section">
+      <h3>Gangguan &amp; WhatsApp</h3>
+      <div class="pin-status-row">
+        <span>Nomor WhatsApp Teknisi<small>Tujuan tetap untuk laporan gangguan (cth. 08123456789). Kosong = pilih kontak manual</small></span>
+        <input type="tel" inputmode="numeric" id="waNumberInput" value="${(localStorage.getItem(WA_NUM_KEY)||'').replace(/"/g,'&quot;')}" placeholder="08xxxxxxxxxx" style="width:130px; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:7px 9px; color:var(--ink); font-size:12.5px;">
+      </div>
+      <div class="pin-status-row">
+        <span>Batas Gangguan Dianggap Lama<small>Ont Los / Dyingasp lebih dari berapa hari ditandai merah</small></span>
+        <input type="number" min="1" max="60" id="staleDaysInput" value="${staleDays()}" style="width:70px; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:7px 9px; color:var(--ink); font-size:12.5px;">
+      </div>
+    </div>
+
+    <div class="settings-section">
       <h3>Data & Riwayat</h3>
       <div class="pin-status-row">
         <span>Riwayat Aktivitas<small>${getAuditLog().length} aktivitas tercatat</small></span>
@@ -1601,6 +1738,18 @@ function openSettings(){
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('closeModalBtn').addEventListener('click', closeModal);
   document.getElementById('openAuditLogBtn').addEventListener('click', openAuditLog);
+  document.getElementById('waNumberInput').addEventListener('change', (e)=>{
+    const d = e.target.value.replace(/\D/g,'');
+    if(d){ localStorage.setItem(WA_NUM_KEY, d); } else { localStorage.removeItem(WA_NUM_KEY); }
+    showToast(d ? 'Nomor WhatsApp teknisi disimpan' : 'Nomor WhatsApp dihapus');
+  });
+  document.getElementById('staleDaysInput').addEventListener('change', (e)=>{
+    const v = Math.min(60, Math.max(1, parseInt(e.target.value,10) || 3));
+    e.target.value = v;
+    localStorage.setItem(STALE_DAYS_KEY, String(v));
+    renderDashboard(); renderData();
+    showToast('Batas gangguan lama disimpan');
+  });
   document.getElementById('usernameInput').addEventListener('change', (e)=>{ setUsername(e.target.value); showToast('Nama pengguna disimpan'); });
   document.getElementById('openTrashBtn').addEventListener('click', openTrashManager);
   document.getElementById('openAllMapBtn').addEventListener('click', ()=>{ closeModal(); document.querySelector('button[data-view="dashboard"]').click(); });
@@ -1781,10 +1930,24 @@ function renderAlerts(){
   let html = '';
 
   const ALERT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const stale = records.filter(r=>{ const v = statusKontrakVal(r); const d = statusDays(r); return (v === 'ONT LOS' || v === 'ONT DYINGASP') && d !== null && d >= staleDays(); })
+    .sort((a,b)=>statusDays(b)-statusDays(a));
+  if(stale.length){
+    const items = stale.slice(0,5).map(r=>`<b>${r['Nama Ruangan']||'-'}</b> (${r['Lokasi']||'-'}) — ${statusLabel(statusKontrakVal(r))} ${statusDays(r)} hari`).join('<br>');
+    html += `
+      <div class="alert-card crit">
+        ${ALERT_ICON}
+        <div class="ac-body">
+          <div class="ac-title">${stale.length} gangguan lebih dari ${staleDays()} hari belum tertangani</div>
+          <div class="ac-list">${items}${stale.length>5 ? `<br>+${stale.length-5} lainnya`:''}</div>
+          <button type="button" onclick="jumpFromHeaderStat('MASALAH')">Lihat di Pencarian Data &rarr;</button>
+        </div>
+      </div>`;
+  }
   [['ONT LOS','los','Ont Los'],['ONT DYINGASP','dying','Ont Dyingasp']].forEach(([st,cls,label])=>{
     const list = records.filter(r=>normalizeStatus(r['Status Kontrak'])===st);
     if(!list.length) return;
-    const items = list.slice(0,5).map(r=>`<b>${r['Nama Ruangan']||'-'}</b> (${r['Lokasi']||'-'})${r['Keterangan Nonaktif'] ? ' — '+String(r['Keterangan Nonaktif']).replace(/</g,'&lt;') : ''}`).join('<br>');
+    const items = list.slice(0,5).map(r=>`<b>${r['Nama Ruangan']||'-'}</b> (${r['Lokasi']||'-'})${r['Keterangan Nonaktif'] ? ' — '+String(r['Keterangan Nonaktif']).replace(/</g,'&lt;') : ''}${statusDays(r) !== null ? ' · '+fmtDurasi(statusDays(r)) : ''}`).join('<br>');
     html += `
       <div class="alert-card ${cls}">
         ${ALERT_ICON}
@@ -1903,6 +2066,19 @@ function renderDashboard(){
       return `<div class="dl-item"><span class="dl-dot" style="background:${paketColors[i % paketColors.length]}"></span>${esc(p)}<b>${c} (${pct}%)</b></div>`;
     }).join('');
   }
+
+  const stCnt = {};
+  records.forEach(r=>{ const v = statusKontrakVal(r); stCnt[v] = (stCnt[v]||0)+1; });
+  const stColors = {'AKTIF':'#34D399','ISOLIR':'#FBBF24','ONT LOS':'#FB923C','ONT DYINGASP':'#C084FC','NONAKTIF':'#F87171'};
+  const stTotal = Math.max(records.length, 1);
+  document.getElementById('statusBars').innerHTML = ['AKTIF','ISOLIR','ONT LOS','ONT DYINGASP','NONAKTIF'].map(k=>{
+    const v = stCnt[k]||0;
+    return `<div class="bar-row status-bar-row" onclick="jumpFromHeaderStat('${k}')">
+      <div class="bar-label"><span class="status-dot" style="background:${stColors[k]};"></span>${statusLabel(k)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v/stTotal*100).toFixed(0)}%; background:${stColors[k]};"></div></div>
+      <div class="bar-val">${v} <small style="color:var(--ink-faint);">(${Math.round(v/stTotal*100)}%)</small></div>
+    </div>`;
+  }).join('');
 
   const bwMap = {};
   records.forEach(r=>{ const b = r['Bandwidth']||'Tidak diketahui'; bwMap[b]=(bwMap[b]||0)+1; });
@@ -2340,6 +2516,14 @@ function sortRecords(list){
       if(db === null) return -1;
       return da - db;
     });
+  } else if(sortBy === 'status_problem'){
+    const rank = {'ONT LOS':0,'ONT DYINGASP':1,'ISOLIR':2,'NONAKTIF':3,'AKTIF':4};
+    arr.sort((a,b)=>{
+      const ra = rank[statusKontrakVal(a)], rb = rank[statusKontrakVal(b)];
+      if(ra !== rb) return ra - rb;
+      const da = statusDays(a), db = statusDays(b);
+      return (db === null ? -1 : db) - (da === null ? -1 : da);
+    });
   } else {
     arr.sort((a,b)=>String(b['Terakhir Diupdate']||'').localeCompare(String(a['Terakhir Diupdate']||'')));
   }
@@ -2415,6 +2599,7 @@ function recordCardHtml(r){
         ${statusBadge(r)}
       </div>
       ${(statusHasNote(statusKontrakVal(r)) && r['Keterangan Nonaktif']) ? `<div class="nonaktif-reason ${statusKontrakVal(r)==='ONT LOS'?'los':(statusKontrakVal(r)==='ONT DYINGASP'?'dying':'')}">${esc(r['Keterangan Nonaktif'])}</div>` : ''}
+      ${(isMasalah(statusKontrakVal(r)) && statusDays(r) !== null) ? `<div class="status-since ${statusDays(r) >= staleDays() ? 'stale' : ''}">⏱ ${statusLabel(statusKontrakVal(r))} sejak ${fmtDurasi(statusDays(r))}${statusDays(r) >= staleDays() ? ' — belum tertangani' : ''}</div>` : ''}
       ${r['ODP'] ? `<div class="rec-loc odp-line copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">${ICON_PLUG} ODP: ${highlightMatch(r['ODP'], state.search)}</div>` : ''}
       <div class="rec-meta">
         <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${highlightMatch(r['Customer ID']||'-', state.search)}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
@@ -2564,9 +2749,11 @@ function bulkChangeStatus(){
     const note = String(fd.get('note')||'').trim();
     const list = records.filter(r=>bulkSelected.has(r._id));
     list.forEach(r=>{
+      const prev = statusKontrakVal(r);
       r['Status Kontrak'] = st;
       if(!statusHasNote(st)) r['Keterangan Nonaktif'] = '';
       else if(note) r['Keterangan Nonaktif'] = note;
+      recordStatusChange(r, prev, st, r['Keterangan Nonaktif']);
       r['Diubah Oleh'] = getUsername();
       r['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
     });
@@ -2585,7 +2772,7 @@ function bulkChangeStatus(){
         if(confirm('Kirim daftar pelanggan ini via WhatsApp ke teknisi?')){
           const lines = list.map((r,i)=>`${i+1}. ${r['Nama Ruangan']||'-'} | ${r['Lokasi']||'-'} | CID ${r['Customer ID']||'-'} | SN ${r['Serial Number']||'-'} | ODP ${r['ODP']||'-'}`);
           const text = `Gangguan ${statusLabel(st)} (${list.length} pelanggan)${note ? '\nKet: '+note : ''}\n` + lines.join('\n');
-          window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+          window.open(waUrlDefault(text), '_blank');
         }
       }, 300);
     }
@@ -2677,6 +2864,17 @@ function openDetail(id){
     </form>
 
     <div class="settings-section" style="margin-top:22px;">
+      <h3>Riwayat Status (${getStatusHist(r._id).length})</h3>
+      ${getStatusHist(r._id).length === 0
+        ? `<div class="edit-hint" style="margin:0;">Belum ada perubahan status tercatat.${statusDays(r)!==null ? '' : ''}</div>`
+        : `<div class="incident-list">${getStatusHist(r._id).map(h=>`
+            <div class="hist-item">
+              <small>${new Date(h.ts).toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${esc(h.user)||'-'}</small>
+              ${esc(statusLabel(h.from))} &rarr; <b>${esc(statusLabel(h.to))}</b>${h.note ? ' — ' + esc(h.note) : ''}
+            </div>`).join('')}</div>`}
+    </div>
+
+    <div class="settings-section" style="margin-top:22px;">
       <h3>Riwayat Gangguan (${incidents.length})</h3>
       ${incidents.length === 0
         ? `<div class="edit-hint" style="margin:0;">Belum ada laporan gangguan untuk titik ini.</div>`
@@ -2731,6 +2929,7 @@ function openDetail(id){
     const prevStatus = statusKontrakVal(r);
     fields.forEach(f=>{ r[f] = fd.get(f); });
     if(!statusHasNote(statusKontrakVal(r))) r['Keterangan Nonaktif'] = '';
+    recordStatusChange(r, prevStatus, statusKontrakVal(r), r['Keterangan Nonaktif']);
     r['Bandwidth'] = normalizeBandwidth(r['Bandwidth']);
     r['ODP'] = normalizeOdp(r['ODP']);
     r['Jenis Paket'] = normalizeJenisPaket(r['Jenis Paket']);
@@ -2795,7 +2994,7 @@ function getIncidentsFor(recordId){
   const log = loadIncidentLog();
   return log[recordId] || [];
 }
-function esc(v){ return v!=null ? String(v).replace(/"/g,'&quot;') : ''; }
+function esc(v){ return v!=null ? String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
 function escJsAttr(v){
   return v!=null ? String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;') : '';
 }
@@ -3172,7 +3371,7 @@ function showReportResult(data){
   document.getElementById('reportPreviewText').textContent = text;
   document.getElementById('modalOverlay').classList.add('show');
   document.getElementById('sendWaBtn').addEventListener('click', ()=>{
-    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    window.open(waUrlDefault(text), '_blank');
   });
   document.getElementById('sendTgBtn').addEventListener('click', ()=>{
     window.open('https://t.me/share/url?url=&text=' + encodeURIComponent(text), '_blank');
@@ -3324,6 +3523,7 @@ document.getElementById('addForm').addEventListener('submit', e=>{
   rec['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
   rec['Ditambahkan Oleh'] = getUsername();
   rec['Diubah Oleh'] = getUsername();
+  if(statusKontrakVal(rec) !== 'AKTIF') recordStatusChange(rec, 'BARU', statusKontrakVal(rec), rec['Keterangan Nonaktif']);
   records.unshift(rec);
   saveRecords();
   logActivity('Tambah Data', rec['Nama Ruangan']||'');
@@ -3434,8 +3634,49 @@ async function findExistingBackupFileId(){
   return (data.files && data.files[0]) ? data.files[0].id : null;
 }
 
-async function uploadBackupToDrive(){
-  const jsonStr = JSON.stringify(records, null, 2);
+/* Enkripsi backup (AES-256-GCM, kunci dari kata sandi lewat PBKDF2). Kata sandi tidak disimpan. */
+function _b64(u8){ let t=''; u8.forEach(x=>{ t += String.fromCharCode(x); }); return btoa(t); }
+function _unb64(b){ return Uint8Array.from(atob(b), c=>c.charCodeAt(0)); }
+async function _deriveBackupKey(pass, salt){
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:200000, hash:'SHA-256' }, km, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function encryptBackupText(text, pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await _deriveBackupKey(pass, salt);
+  const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(text));
+  return JSON.stringify({ sjEnc:1, salt:_b64(salt), iv:_b64(iv), data:_b64(new Uint8Array(ct)) });
+}
+async function decryptBackupObj(obj, pass){
+  const key = await _deriveBackupKey(pass, _unb64(obj.salt));
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:_unb64(obj.iv) }, key, _unb64(obj.data));
+  return new TextDecoder().decode(pt);
+}
+function askPassphrase(title, hint, confirmNew){
+  return new Promise(resolve=>{
+    const sheet = document.getElementById('modalSheet');
+    sheet.innerHTML = `
+      <div class="modal-handle"></div>
+      <div class="modal-title">${title}</div>
+      <div class="edit-hint">${hint}</div>
+      <div class="field"><label>Kata sandi</label><input type="password" id="bkPass1" autocomplete="off"></div>
+      ${confirmNew ? '<div class="field"><label>Ulangi kata sandi</label><input type="password" id="bkPass2" autocomplete="off"></div>' : ''}
+      <button type="button" class="btn-primary" id="bkOk">Lanjut</button>
+      <button type="button" class="btn-ghost" id="bkCancel">Batal</button>`;
+    document.getElementById('modalOverlay').classList.add('show');
+    document.getElementById('bkOk').addEventListener('click', ()=>{
+      const p1 = document.getElementById('bkPass1').value;
+      if(confirmNew && p1 !== document.getElementById('bkPass2').value){ showToast('Kata sandi tidak sama'); return; }
+      closeModal(); resolve(p1);
+    });
+    document.getElementById('bkCancel').addEventListener('click', ()=>{ closeModal(); resolve(null); });
+  });
+}
+
+async function uploadBackupToDrive(pass){
+  const plainStr = JSON.stringify(records, null, 2);
+  const jsonStr = pass ? await encryptBackupText(plainStr, pass) : plainStr;
   const metadata = { name: GDRIVE_FILENAME, mimeType: 'application/json' };
   const boundary = 'sjboundary_' + Date.now();
   const body =
@@ -3464,11 +3705,13 @@ async function uploadBackupToDrive(){
   return res.json();
 }
 
-function startGdriveBackup(){
+async function startGdriveBackup(){
+  const pass = await askPassphrase('Enkripsi Backup', 'Backup berisi password WiFi. Isi kata sandi agar file di Google Drive terenkripsi (AES-256). Kata sandi <b>tidak disimpan</b> — kalau lupa, backup tidak bisa dipulihkan. Kosongkan untuk backup tanpa enkripsi.', true);
+  if(pass === null) return;
   requestGdriveToken(async ()=>{
     try{
       showToast('Mengunggah backup ke Google Drive...');
-      await uploadBackupToDrive();
+      await uploadBackupToDrive(pass);
       localStorage.setItem(GDRIVE_LAST_KEY, new Date().toISOString());
       logActivity('Backup Google Drive', 'Unggah');
       renderGdriveStatus();
@@ -3488,8 +3731,17 @@ async function downloadBackupFromDrive(){
   });
   if(!res.ok) throw new Error('Gagal mengunduh file dari Drive');
   const data = await res.json();
-  if(!Array.isArray(data)) throw new Error('Format file backup tidak dikenali');
-  return data;
+  if(Array.isArray(data)) return data;
+  if(data && data.sjEnc === 1){
+    const pass = await askPassphrase('Backup Terenkripsi', 'Masukkan kata sandi yang dipakai saat backup.', false);
+    if(pass === null) throw new Error('Pemulihan dibatalkan');
+    let arr;
+    try{ arr = JSON.parse(await decryptBackupObj(data, pass)); }
+    catch(e){ throw new Error('Kata sandi salah atau file backup rusak'); }
+    if(!Array.isArray(arr)) throw new Error('Format file backup tidak dikenali');
+    return arr;
+  }
+  throw new Error('Format file backup tidak dikenali');
 }
 
 function startGdriveRestore(){
@@ -3525,7 +3777,9 @@ setTimeout(()=>checkContractNotifications(false), 4000);
 const PRINT_FIELDS = ['Prioritas','Nama Ruangan','Customer ID','Serial Number','Bandwidth','Status Kontrak','Keterangan Nonaktif','Lokasi','ODP','Jenis Paket','Tanggal Instalasi','Tanggal Berakhir Kontrak','PIC/Teknisi','Nama Jaringan','Password WiFi'];
 
 function buildPrintTable(list, subtitle, includePass){
-  document.getElementById('printSubtitle').textContent = subtitle + ` (${list.length} data)`;
+  const _pc = {}; list.forEach(r=>{ const v = statusKontrakVal(r); _pc[v] = (_pc[v]||0)+1; });
+  const _ps = ['AKTIF','ISOLIR','ONT LOS','ONT DYINGASP','NONAKTIF'].filter(k=>_pc[k]).map(k=>`${statusLabel(k)} ${_pc[k]}`).join(' · ');
+  document.getElementById('printSubtitle').textContent = subtitle + ` (${list.length} data)` + (_ps ? ' — ' + _ps : '');
   document.getElementById('printDate').textContent = 'Dicetak: ' + new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
   document.getElementById('printTableBody').innerHTML = list.map((r,i)=>`
     <tr>
@@ -3535,7 +3789,7 @@ function buildPrintTable(list, subtitle, includePass){
       <td>${r['Customer ID']||''}</td>
       <td>${r['Serial Number']||''}</td>
       <td>${r['Bandwidth']||''}</td>
-      <td>${r['Status Kontrak']||''}</td>
+      <td>${r['Status Kontrak'] ? statusLabel(statusKontrakVal(r)) + ((isMasalah(statusKontrakVal(r)) && statusDays(r) !== null) ? ' (' + fmtDurasi(statusDays(r)) + ')' : '') : ''}</td>
       <td>${r['Lokasi']||''}</td>
       <td>${r['ODP']||''}</td>
       <td>${r['Jenis Paket']||''}</td>
@@ -3583,7 +3837,7 @@ function exportExcel(list, filename){
     'Customer ID': r['Customer ID']||'',
     'Serial Number': r['Serial Number']||'',
     'Bandwidth': r['Bandwidth']||'',
-    'Status Kontrak': r['Status Kontrak']||'',
+    'Status Kontrak': r['Status Kontrak'] ? statusLabel(normalizeStatus(r['Status Kontrak'])) : '',
     'Keterangan Nonaktif': r['Keterangan Nonaktif']||'',
     'Lokasi': r['Lokasi']||'',
     'ODP': r['ODP']||'',
@@ -3593,12 +3847,13 @@ function exportExcel(list, filename){
     'PIC/Teknisi': r['PIC/Teknisi']||'',
     'Nama Jaringan': r['Nama Jaringan']||'',
     'Password WiFi': includePass ? (r['Password WiFi']||'') : (r['Password WiFi'] ? '••••••••' : ''),
+    'Status Sejak': r['Status Sejak'] ? String(r['Status Sejak']).slice(0,10) : '',
     'Terakhir Diupdate': r['Terakhir Diupdate']||''
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [
     {wch:4},{wch:12},{wch:22},{wch:16},{wch:16},{wch:10},{wch:12},
-    {wch:20},{wch:18},{wch:14},{wch:14},{wch:16},{wch:20},{wch:16},{wch:14}
+    {wch:20},{wch:18},{wch:14},{wch:14},{wch:16},{wch:20},{wch:16},{wch:14},{wch:12},{wch:14}
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Data Jaringan');
@@ -3637,8 +3892,10 @@ document.getElementById('importExcelInput').addEventListener('change', e=>{
 
         let target = custId ? records.find(x=> String(x['Customer ID']||'').trim() === custId) : null;
         if(target){
+          const prevSt = statusKontrakVal(target);
           IMPORT_FIELDS.forEach(f=>{ if(row[f] !== undefined && row[f] !== '') target[f] = row[f]; });
           if(target['Status Kontrak']) target['Status Kontrak'] = normalizeStatus(target['Status Kontrak']);
+          recordStatusChange(target, prevSt, statusKontrakVal(target), target['Keterangan Nonaktif']);
           target['Bandwidth'] = normalizeBandwidth(target['Bandwidth']);
           target['ODP'] = normalizeOdp(target['ODP']);
           target['Jenis Paket'] = normalizeJenisPaket(target['Jenis Paket']);
@@ -3649,6 +3906,7 @@ document.getElementById('importExcelInput').addEventListener('change', e=>{
           const rec = { _id: 'imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7) };
           IMPORT_FIELDS.forEach(f=>{ rec[f] = row[f] !== undefined ? row[f] : ''; });
           if(rec['Status Kontrak']) rec['Status Kontrak'] = normalizeStatus(rec['Status Kontrak']);
+          if(statusKontrakVal(rec) !== 'AKTIF') recordStatusChange(rec, 'BARU', statusKontrakVal(rec), rec['Keterangan Nonaktif']);
           rec['Bandwidth'] = normalizeBandwidth(rec['Bandwidth']);
           rec['ODP'] = normalizeOdp(rec['ODP']);
           rec['Jenis Paket'] = normalizeJenisPaket(rec['Jenis Paket']);
