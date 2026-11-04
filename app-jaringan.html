@@ -276,6 +276,10 @@
   }
   .alert-card.warn{background:rgba(245,165,36,.08); border-color:rgba(245,165,36,.3);}
   .alert-card.crit{background:var(--danger-bg); border-color:rgba(248,113,113,.35);}
+  .alert-card.los{background:var(--los-bg); border-color:rgba(251,146,60,.38);}
+  .alert-card.dying{background:var(--dying-bg); border-color:rgba(192,132,252,.38);}
+  .alert-card.los svg, .alert-card.los button{color:var(--los);}
+  .alert-card.dying svg, .alert-card.dying button{color:var(--dying);}
   .alert-card svg{width:19px; height:19px; flex:none; margin-top:1px;}
   .alert-card.warn svg{color:#F5A524;}
   .alert-card.crit svg{color:var(--danger);}
@@ -464,6 +468,8 @@
   .status-badge.st-nonaktif{color:var(--danger); background:var(--danger-bg);}
   .nonaktif-reason{ margin-top:6px; padding:7px 10px; border-radius:8px; background:var(--danger-bg); border:1px solid rgba(248,113,113,.25); color:var(--danger); font-size:11.5px; line-height:1.5; }
   .status-badge.st-isolir{color:var(--warn); background:var(--warn-bg);}
+  .nonaktif-reason.los{ background:var(--los-bg); border-color:rgba(251,146,60,.3); color:var(--los); }
+  .nonaktif-reason.dying{ background:var(--dying-bg); border-color:rgba(192,132,252,.3); color:var(--dying); }
   .status-badge.st-ontlos{color:var(--los); background:var(--los-bg);}
   .status-badge.st-dyingasp{color:var(--dying); background:var(--dying-bg);}
   .rec-detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);}
@@ -735,6 +741,7 @@
   <div class="header-stats">
     <button type="button" class="hstat" id="hstatTotal" data-jump="ALL"><b id="hsTotal">0</b><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>Total Site</span></button>
     <button type="button" class="hstat" id="hstatAktif" data-jump="AKTIF"><b id="hsAktif">0</b><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Aktif</span></button>
+    <button type="button" class="hstat" id="hstatMasalah" data-jump="MASALAH"><b id="hsMasalah">0</b><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Bermasalah</span></button>
     <button type="button" class="hstat" id="hstatLokasi" data-jump="LOKASI"><b id="hsLokasi">0</b><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Lokasi</span></button>
   </div>
   <div class="header-updated" id="headerUpdated"></div>
@@ -843,6 +850,7 @@
     </select>
     <select class="loc-filter" id="statusFilter" style="margin-top:6px;">
       <option value="ALL">Semua Status</option>
+      <option value="MASALAH">Bermasalah (Isolir, Ont Los, Dyingasp)</option>
       <option value="AKTIF">Aktif</option>
       <option value="NONAKTIF">Nonaktif</option>
       <option value="ISOLIR">Isolir</option>
@@ -921,7 +929,7 @@
             <input type="text" name="Bandwidth" placeholder="cth. 50 Mbps">
           </div>
           <div class="field">
-            <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Status Kontrak</label>
+            <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Status</label>
             <select name="Status Kontrak" id="statusKontrakSelect">
               <option value="AKTIF" selected>Aktif</option>
               <option value="NONAKTIF">Nonaktif</option>
@@ -932,8 +940,8 @@
           </div>
         </div>
         <div class="field" id="keteranganNonaktifField" style="display:none;">
-          <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Keterangan Nonaktif <span class="hint">opsional</span></label>
-          <textarea name="Keterangan Nonaktif" placeholder="cth. Pelanggan menunggak, perangkat rusak, dll."></textarea>
+          <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Keterangan <span class="hint">opsional</span></label>
+          <textarea name="Keterangan Nonaktif" placeholder="cth. Pelanggan menunggak, kabel putus di ODP, listrik padam, dll."></textarea>
         </div>
         <div class="field">
           <label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Lokasi</label>
@@ -1287,6 +1295,15 @@ function statusKontrakVal(r){
   const v = normalizeStatus(r['Status Kontrak']);
   return (v === 'ISOLIR' || v === 'NONAKTIF' || v === 'ONT LOS' || v === 'ONT DYINGASP') ? v : 'AKTIF';
 }
+function statusHasNote(v){ return v === 'NONAKTIF' || v === 'ONT LOS' || v === 'ONT DYINGASP'; }
+function isMasalah(v){ return v === 'ISOLIR' || v === 'ONT LOS' || v === 'ONT DYINGASP'; }
+function matchStatusFilter(r, st){
+  if(st === 'ALL') return true;
+  const v = normalizeStatus(r['Status Kontrak']);
+  if(st === 'MASALAH') return isMasalah(v);
+  return v === st;
+}
+function statusLabel(v){ return ({'AKTIF':'Aktif','ISOLIR':'Isolir','NONAKTIF':'Nonaktif','ONT LOS':'Ont Los','ONT DYINGASP':'Ont Dyingasp'})[v] || v; }
 function statusBadge(r){
   const v = statusKontrakVal(r);
   const ico = {
@@ -1665,7 +1682,7 @@ function jumpFromHeaderStat(kind){
   }
   document.querySelector('button[data-view="data"]').click();
   state.paket = 'ALL';
-  state.status = kind === 'AKTIF' ? 'AKTIF' : 'ALL';
+  state.status = kind;
   state.search = '';
   state.loc = 'ALL';
   document.getElementById('searchInput').value = '';
@@ -1675,6 +1692,7 @@ function jumpFromHeaderStat(kind){
 }
 document.getElementById('hstatTotal').addEventListener('click', ()=>jumpFromHeaderStat('ALL'));
 document.getElementById('hstatAktif').addEventListener('click', ()=>jumpFromHeaderStat('AKTIF'));
+document.getElementById('hstatMasalah').addEventListener('click', ()=>jumpFromHeaderStat('MASALAH'));
 document.getElementById('hstatLokasi').addEventListener('click', ()=>jumpFromHeaderStat('LOKASI'));
 
 function openPinManager(){
@@ -1762,6 +1780,22 @@ function renderAlerts(){
 
   let html = '';
 
+  const ALERT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  [['ONT LOS','los','Ont Los'],['ONT DYINGASP','dying','Ont Dyingasp']].forEach(([st,cls,label])=>{
+    const list = records.filter(r=>normalizeStatus(r['Status Kontrak'])===st);
+    if(!list.length) return;
+    const items = list.slice(0,5).map(r=>`<b>${r['Nama Ruangan']||'-'}</b> (${r['Lokasi']||'-'})${r['Keterangan Nonaktif'] ? ' — '+String(r['Keterangan Nonaktif']).replace(/</g,'&lt;') : ''}`).join('<br>');
+    html += `
+      <div class="alert-card ${cls}">
+        ${ALERT_ICON}
+        <div class="ac-body">
+          <div class="ac-title">${list.length} pelanggan ${label}</div>
+          <div class="ac-list">${items}${list.length>5 ? `<br>+${list.length-5} lainnya`:''}</div>
+          <button type="button" onclick="jumpFromHeaderStat('${st}')">Lihat di Pencarian Data &rarr;</button>
+        </div>
+      </div>`;
+  });
+
   if(overdue.length){
     const items = overdue.slice(0,5).map(x=>`<b>${x.r['Nama Ruangan']||'-'}</b> (${x.r['Lokasi']||'-'}) — terlewat ${Math.abs(x.days)} hari`).join('<br>');
     html += `
@@ -1828,6 +1862,7 @@ function renderDashboard(){
 
   animateNumber(document.getElementById('hsTotal'), total);
   animateNumber(document.getElementById('hsAktif'), aktif);
+  animateNumber(document.getElementById('hsMasalah'), records.filter(r=>isMasalah(normalizeStatus(r['Status Kontrak']))).length);
   animateNumber(document.getElementById('hsLokasi'), locSet.size);
   animateNumber(document.getElementById('dTotal'), total);
 
@@ -1982,7 +2017,10 @@ function renderLocMap(){
 
   Object.values(points).forEach(pt=>{
     const total = pt.records.length;
-    const aktif = pt.records.filter(r=>String(r['Status Kontrak']).toUpperCase()==='AKTIF').length;
+    const stCount = {};
+    pt.records.forEach(r=>{ const v = statusKontrakVal(r); stCount[v] = (stCount[v]||0)+1; });
+    const stColor = {'AKTIF':'#34D399','NONAKTIF':'#F87171','ISOLIR':'#FBBF24','ONT LOS':'#FB923C','ONT DYINGASP':'#C084FC'};
+    const stHtml = ['AKTIF','ISOLIR','ONT LOS','ONT DYINGASP','NONAKTIF'].filter(k=>stCount[k]).map(k=>`<span style="color:${stColor[k]};font-weight:700;">${stCount[k]} ${statusLabel(k).toLowerCase()}</span>`).join(' &middot; ');
     const radius = 10 + Math.min(18, Math.sqrt(total) * 4);
     const marker = L.circleMarker([pt.lat, pt.lng], {
       radius, weight:2.5, color:markerColor, fillColor:'#0A0F16', fillOpacity:.9
@@ -1997,7 +2035,7 @@ function renderLocMap(){
     marker.bindPopup(`
       <div class="map-pop">
         <b>${pt.label}</b>
-        <span class="mp-count">${total} site</span> &nbsp;·&nbsp; <span style="color:#34D399;font-weight:700;">${aktif} aktif</span>
+        <span class="mp-count">${total} site</span> &nbsp;·&nbsp; ${stHtml}
         <div class="mp-sub">${subList}${more}</div>
       </div>
     `);
@@ -2271,7 +2309,7 @@ function filteredRecords(){
     if(state.odp !== 'ALL' && r['ODP'] !== state.odp) return false;
     if(state.paket !== 'ALL' && r['Jenis Paket'] !== state.paket) return false;
     if(state.bw !== 'ALL' && r['Bandwidth'] !== state.bw) return false;
-    if(state.status !== 'ALL' && normalizeStatus(r['Status Kontrak']) !== state.status) return false;
+    if(!matchStatusFilter(r, state.status)) return false;
     if(state.expiry !== 'ALL'){
       const d = daysUntil(r['Tanggal Berakhir Kontrak']);
       if(state.expiry === 'OVERDUE' && !(d !== null && d < 0)) return false;
@@ -2376,7 +2414,7 @@ function recordCardHtml(r){
         <div class="rec-loc copyable" style="margin-top:0;" onclick="copyField('${escJsAttr(r['Lokasi'])}','Lokasi')">${ICON_PIN} ${highlightMatch(r['Lokasi']||'-', state.search)}</div>
         ${statusBadge(r)}
       </div>
-      ${(String(r['Status Kontrak']||'').toUpperCase()==='NONAKTIF' && r['Keterangan Nonaktif']) ? `<div class="nonaktif-reason">${esc(r['Keterangan Nonaktif'])}</div>` : ''}
+      ${(statusHasNote(statusKontrakVal(r)) && r['Keterangan Nonaktif']) ? `<div class="nonaktif-reason ${statusKontrakVal(r)==='ONT LOS'?'los':(statusKontrakVal(r)==='ONT DYINGASP'?'dying':'')}">${esc(r['Keterangan Nonaktif'])}</div>` : ''}
       ${r['ODP'] ? `<div class="rec-loc odp-line copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">${ICON_PLUG} ODP: ${highlightMatch(r['ODP'], state.search)}</div>` : ''}
       <div class="rec-meta">
         <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${highlightMatch(r['Customer ID']||'-', state.search)}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
@@ -2467,6 +2505,7 @@ function renderBulkBar(list){
       <span class="bulk-count">${bulkSelected.size} data dipilih</span>
       <div class="bulk-actions-inline">
         <button type="button" id="bulkSelectAllBtn">${selectedInView === visibleIds.length && visibleIds.length>0 ? 'Batal Semua' : 'Pilih Semua'}</button>
+        <button type="button" id="bulkStatusBtn">Status</button>
         <button type="button" id="bulkExportBtn">Excel</button>
         <button type="button" class="danger-btn" id="bulkDeleteBtn">Hapus</button>
         <button type="button" id="bulkCancelBtn">Selesai</button>
@@ -2478,6 +2517,7 @@ function renderBulkBar(list){
     else { visibleIds.forEach(id=>bulkSelected.add(id)); }
     renderData();
   });
+  document.getElementById('bulkStatusBtn').addEventListener('click', bulkChangeStatus);
   document.getElementById('bulkExportBtn').addEventListener('click', bulkExportSelected);
   document.getElementById('bulkDeleteBtn').addEventListener('click', bulkDeleteSelected);
   document.getElementById('bulkCancelBtn').addEventListener('click', toggleBulkMode);
@@ -2487,6 +2527,69 @@ function bulkExportSelected(){
   const list = records.filter(r=>bulkSelected.has(r._id));
   exportExcel(list, `Data_Jaringan_Terpilih_${new Date().toISOString().slice(0,10)}.xlsx`);
   logActivity('Export Excel Terpilih', `${list.length} data`);
+}
+function bulkChangeStatus(){
+  if(bulkSelected.size === 0){ showToast('Belum ada data dipilih'); return; }
+  const sheet = document.getElementById('modalSheet');
+  sheet.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">Ubah Status ${bulkSelected.size} Data</div>
+    <form id="bulkStatusForm">
+      <div class="field">
+        <label>Status Baru</label>
+        <select name="status" id="bulkStatusSelect">
+          <option value="AKTIF">Aktif</option>
+          <option value="NONAKTIF">Nonaktif</option>
+          <option value="ISOLIR">Isolir</option>
+          <option value="ONT LOS">Ont Los</option>
+          <option value="ONT DYINGASP">Ont Dyingasp</option>
+        </select>
+      </div>
+      <div class="field" id="bulkNoteField" style="display:none;">
+        <label>Keterangan <span class="hint">opsional, diisi ke semua data terpilih</span></label>
+        <textarea name="note" placeholder="cth. ODP mati, kabel putus, listrik padam"></textarea>
+      </div>
+      <button type="submit" class="btn-primary">Terapkan</button>
+      <button type="button" class="btn-ghost" id="bulkStatusCancel">Batal</button>
+    </form>`;
+  document.getElementById('modalOverlay').classList.add('show');
+  document.getElementById('bulkStatusCancel').addEventListener('click', closeModal);
+  document.getElementById('bulkStatusSelect').addEventListener('change', e=>{
+    document.getElementById('bulkNoteField').style.display = statusHasNote(e.target.value) ? 'block' : 'none';
+  });
+  document.getElementById('bulkStatusForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const st = fd.get('status');
+    const note = String(fd.get('note')||'').trim();
+    const list = records.filter(r=>bulkSelected.has(r._id));
+    list.forEach(r=>{
+      r['Status Kontrak'] = st;
+      if(!statusHasNote(st)) r['Keterangan Nonaktif'] = '';
+      else if(note) r['Keterangan Nonaktif'] = note;
+      r['Diubah Oleh'] = getUsername();
+      r['Terakhir Diupdate'] = new Date().toISOString().slice(0,10);
+    });
+    saveRecords();
+    logActivity('Ubah Status Massal', `${list.length} data -> ${statusLabel(st)}`);
+    bulkSelected.clear();
+    bulkMode = false;
+    const btn = document.getElementById('toggleBulkModeBtn');
+    if(btn) btn.classList.remove('active-bulk');
+    closeModal();
+    renderData();
+    renderDashboard();
+    showToast(`${list.length} data diubah menjadi ${statusLabel(st)}`);
+    if(st === 'ONT LOS' || st === 'ONT DYINGASP'){
+      setTimeout(()=>{
+        if(confirm('Kirim daftar pelanggan ini via WhatsApp ke teknisi?')){
+          const lines = list.map((r,i)=>`${i+1}. ${r['Nama Ruangan']||'-'} | ${r['Lokasi']||'-'} | CID ${r['Customer ID']||'-'} | SN ${r['Serial Number']||'-'} | ODP ${r['ODP']||'-'}`);
+          const text = `Gangguan ${statusLabel(st)} (${list.length} pelanggan)${note ? '\nKet: '+note : ''}\n` + lines.join('\n');
+          window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+        }
+      }, 300);
+    }
+  });
 }
 function bulkDeleteSelected(){
   if(bulkSelected.size === 0){ showToast('Belum ada data dipilih'); return; }
@@ -2523,7 +2626,7 @@ function openDetail(id){
         if(f === 'Status Kontrak'){
           return `
         <div class="field">
-          <label>${f}</label>
+          <label>Status</label>
           <select name="${f}">
             <option value="AKTIF" ${statusKontrakVal(r)==='AKTIF'?'selected':''}>Aktif</option>
             <option value="NONAKTIF" ${statusKontrakVal(r)==='NONAKTIF'?'selected':''}>Nonaktif</option>
@@ -2546,9 +2649,9 @@ function openDetail(id){
         }
         if(f === 'Keterangan Nonaktif'){
           return `
-        <div class="field" id="editKeteranganNonaktifField" style="display:${String(r['Status Kontrak']||'').toUpperCase()==='NONAKTIF' ? 'block' : 'none'};">
-          <label>${f} <span class="hint">opsional</span></label>
-          <textarea name="${f}" placeholder="cth. Pelanggan menunggak, perangkat rusak, dll.">${r[f]!=null? String(r[f]).replace(/</g,'&lt;'):''}</textarea>
+        <div class="field" id="editKeteranganNonaktifField" style="display:${statusHasNote(statusKontrakVal(r)) ? 'block' : 'none'};">
+          <label>Keterangan <span class="hint">opsional</span></label>
+          <textarea name="${f}" placeholder="cth. Pelanggan menunggak, kabel putus di ODP, listrik padam, dll.">${r[f]!=null? String(r[f]).replace(/</g,'&lt;'):''}</textarea>
         </div>`;
         }
         if(f === 'Serial Number'){
@@ -2593,9 +2696,9 @@ function openDetail(id){
     editStatusSelect.addEventListener('change', e=>{
       const kf = document.getElementById('editKeteranganNonaktifField');
       if(!kf) return;
-      const isNonaktif = e.target.value === 'NONAKTIF';
-      kf.style.display = isNonaktif ? 'block' : 'none';
-      if(!isNonaktif) kf.querySelector('textarea').value = '';
+      const needNote = statusHasNote(e.target.value);
+      kf.style.display = needNote ? 'block' : 'none';
+      if(!needNote) kf.querySelector('textarea').value = '';
     });
   }
   document.getElementById('editForm').addEventListener('submit', e=>{
@@ -2625,7 +2728,9 @@ function openDetail(id){
         return;
       }
     }
+    const prevStatus = statusKontrakVal(r);
     fields.forEach(f=>{ r[f] = fd.get(f); });
+    if(!statusHasNote(statusKontrakVal(r))) r['Keterangan Nonaktif'] = '';
     r['Bandwidth'] = normalizeBandwidth(r['Bandwidth']);
     r['ODP'] = normalizeOdp(r['ODP']);
     r['Jenis Paket'] = normalizeJenisPaket(r['Jenis Paket']);
@@ -2637,6 +2742,14 @@ function openDetail(id){
     closeModal();
     renderData();
     showToast('Perubahan disimpan');
+    const newStatus = statusKontrakVal(r);
+    if(newStatus !== prevStatus && (newStatus === 'ONT LOS' || newStatus === 'ONT DYINGASP')){
+      setTimeout(()=>{
+        if(confirm(`Status diubah menjadi ${statusLabel(newStatus)}. Buat laporan gangguan sekarang?`)){
+          openReportForm(r._id, `${statusLabel(newStatus)}${r['Keterangan Nonaktif'] ? ' - '+r['Keterangan Nonaktif'] : ''}`);
+        }
+      }, 300);
+    }
   });
 }
 function closeModal(){
@@ -2730,12 +2843,12 @@ function buildRecordSummaryText(r){
     `Serial Number: ${r['Serial Number']||'-'}`,
     `Bandwidth: ${r['Bandwidth']||'-'}`,
     `Jenis Paket: ${r['Jenis Paket']||'-'}`,
-    `Status Kontrak: ${r['Status Kontrak']||'-'}`,
+    `Status: ${statusLabel(statusKontrakVal(r))}`,
     `Tgl Instalasi: ${fmtTgl(r['Tanggal Instalasi'])}`,
     `Tgl Berakhir Kontrak: ${fmtTgl(r['Tanggal Berakhir Kontrak'])}`,
     `PIC/Teknisi: ${r['PIC/Teknisi']||'-'}`
   ];
-  if(String(r['Status Kontrak']||'').toUpperCase()==='NONAKTIF' && r['Keterangan Nonaktif']) lines.push(`Keterangan Nonaktif: ${r['Keterangan Nonaktif']}`);
+  if(statusHasNote(statusKontrakVal(r)) && r['Keterangan Nonaktif']) lines.push(`Keterangan: ${r['Keterangan Nonaktif']}`);
   if(r['Nama Jaringan']) lines.push(`Nama WiFi (SSID): ${r['Nama Jaringan']}`);
   return lines.join('\n');
 }
@@ -2969,7 +3082,7 @@ function showWifiQr(id){
   document.getElementById('closeQrBtn').addEventListener('click', closeModal);
 }
 
-function openReportForm(id){
+function openReportForm(id, prefillKeluhan){
   const r = records.find(x=>x._id===id);
   if(!r) return;
   const sheet = document.getElementById('modalSheet');
@@ -2979,7 +3092,7 @@ function openReportForm(id){
     <form id="reportForm">
       <div class="field">
         <label>1. Keluhan</label>
-        <textarea name="keluhan" placeholder="Jelaskan keluhan/gangguan yang terjadi..." required></textarea>
+        <textarea name="keluhan" placeholder="Jelaskan keluhan/gangguan yang terjadi..." required>${prefillKeluhan ? String(prefillKeluhan).replace(/&/g,'&amp;').replace(/</g,'&lt;') : ''}</textarea>
       </div>
       <div class="field">
         <label>2. Nama Ruangan</label>
@@ -3171,9 +3284,9 @@ async function downloadReportAsPdf(data){
 
 document.getElementById('statusKontrakSelect').addEventListener('change', e=>{
   const field = document.getElementById('keteranganNonaktifField');
-  const isNonaktif = e.target.value === 'NONAKTIF';
-  field.style.display = isNonaktif ? 'block' : 'none';
-  if(!isNonaktif) field.querySelector('textarea').value = '';
+  const needNote = statusHasNote(e.target.value);
+  field.style.display = needNote ? 'block' : 'none';
+  if(!needNote) field.querySelector('textarea').value = '';
 });
 document.getElementById('addForm').addEventListener('submit', e=>{
   e.preventDefault();
