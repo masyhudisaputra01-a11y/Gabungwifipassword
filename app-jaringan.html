@@ -882,6 +882,7 @@
     <select class="loc-filter" id="statusFilter" style="margin-top:6px;">
       <option value="ALL">Semua Status</option>
       <option value="MASALAH">Bermasalah (Isolir, Ont Los, Dyingasp)</option>
+      <option value="BERULANG">Gangguan berulang (3x+ dalam 30 hari)</option>
       <option value="AKTIF">Aktif</option>
       <option value="NONAKTIF">Nonaktif</option>
       <option value="ISOLIR">Isolir</option>
@@ -1157,12 +1158,13 @@ function clearAuditLog(){
 }
 
 /* ---------------- RIWAYAT STATUS ---------------- */
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 const STATUS_HIST_KEY = 'sj_status_history_v1';
 const STALE_DAYS_KEY = 'sj_stale_days_v1';
 const WA_NUM_KEY = 'sj_wa_number_v1';
 function staleDays(){ const v = parseInt(localStorage.getItem(STALE_DAYS_KEY),10); return v > 0 ? v : 3; }
-function loadStatusHist(){ try{ return JSON.parse(localStorage.getItem(STATUS_HIST_KEY)) || {}; }catch(e){ return {}; } }
+let _histCache = null;
+function loadStatusHist(){ if(_histCache) return _histCache; try{ _histCache = JSON.parse(localStorage.getItem(STATUS_HIST_KEY)) || {}; }catch(e){ _histCache = {}; } return _histCache; }
 function getStatusHist(id){ return loadStatusHist()[id] || []; }
 function recordStatusChange(r, prev, next, note){
   if(!r || prev === next) return;
@@ -1193,6 +1195,43 @@ function getWaNumber(){
   if(n.startsWith('0')) n = '62' + n.slice(1);
   else if(n.startsWith('8')) n = '62' + n;
   return n;
+}
+/* ---- Deteksi pola gangguan ---- */
+const ODP_SUSPECT_MIN = 3;   // minimal pelanggan gangguan di ODP/lokasi yang sama
+const LOK_SUSPECT_RATIO = 0.5; // khusus lokasi: minimal separuh pelanggan di lokasi itu
+const REPEAT_MIN = 3;        // gangguan berulang: minimal kejadian...
+const REPEAT_DAYS = 30;      // ...dalam sekian hari
+function repeatCount(id){
+  const since = Date.now() - REPEAT_DAYS * 86400000;
+  return (loadStatusHist()[id] || []).filter(e=>(e.to === 'ONT LOS' || e.to === 'ONT DYINGASP') && new Date(e.ts).getTime() >= since).length;
+}
+function repeatList(){
+  return records.map(r=>({ r, n: repeatCount(r._id) })).filter(x=>x.n >= REPEAT_MIN).sort((a,b)=>b.n - a.n);
+}
+function odpSuspects(){
+  const down = {}, total = {};
+  records.forEach(r=>{
+    const odp = String(r['ODP']||'').trim();
+    const lok = String(r['Lokasi']||'').trim();
+    const key = odp ? 'ODP|' + odp : (lok ? 'LOK|' + lok : '');
+    if(!key) return;
+    total[key] = (total[key]||0) + 1;
+    const v = statusKontrakVal(r);
+    if(v === 'ONT LOS' || v === 'ONT DYINGASP') (down[key] = down[key] || []).push(r);
+  });
+  return Object.entries(down)
+    .filter(([k,l])=> l.length >= ODP_SUSPECT_MIN && (k.startsWith('ODP|') || l.length / total[k] >= LOK_SUSPECT_RATIO))
+    .map(([k,l])=>({ type:k.slice(0,3), name:k.slice(4), list:l, total:total[k] }))
+    .sort((a,b)=>b.list.length - a.list.length);
+}
+function jumpToGroup(type, name){
+  document.querySelector('button[data-view="data"]').click();
+  state.search = ''; state.paket = 'ALL'; state.status = 'MASALAH';
+  state.loc = type === 'LOK' ? name : 'ALL';
+  state.odp = type === 'ODP' ? name : 'ALL';
+  document.getElementById('searchInput').value = '';
+  document.querySelectorAll('#paketChips .chip').forEach(c=>c.classList.toggle('active', c.dataset.paket==='ALL'));
+  renderData();
 }
 function applyStatusChange(r, st, note){
   const prev = statusKontrakVal(r);
@@ -1249,6 +1288,19 @@ function buildRekapText(days){
   });
   if(ong.length > 30) L.push('+' + (ong.length - 30) + ' lainnya');
   L.push('');
+  const sus = odpSuspects();
+  if(sus.length){
+    L.push('DUGAAN GANGGUAN ODP/LOKASI');
+    sus.forEach(g=>L.push('- ' + (g.type === 'ODP' ? 'ODP ' : 'Lokasi ') + g.name + ': ' + g.list.length + ' dari ' + g.total + ' pelanggan terdampak'));
+    L.push('');
+  }
+  const rep = repeatList();
+  if(rep.length){
+    L.push('GANGGUAN BERULANG (' + REPEAT_MIN + 'x+ dalam ' + REPEAT_DAYS + ' hari)');
+    rep.slice(0,15).forEach(x=>L.push('- ' + (x.r['Nama Ruangan']||'-') + ' | ' + (x.r['Lokasi']||'-') + ' | ' + x.n + 'x'));
+    if(rep.length > 15) L.push('+' + (rep.length - 15) + ' lainnya');
+    L.push('');
+  }
   const done = [...st.done].sort((a,b)=>new Date(b.ts) - new Date(a.ts));
   L.push('SELESAI DITANGANI (' + done.length + ')');
   if(!done.length) L.push('- belum ada');
@@ -1519,6 +1571,7 @@ function matchStatusFilter(r, st){
   if(st === 'ALL') return true;
   const v = normalizeStatus(r['Status Kontrak']);
   if(st === 'MASALAH') return isMasalah(v);
+  if(st === 'BERULANG') return repeatCount(r._id) >= REPEAT_MIN;
   return v === st;
 }
 function statusLabel(v){ return ({'AKTIF':'Aktif','ISOLIR':'Isolir','NONAKTIF':'Nonaktif','ONT LOS':'Ont Los','ONT DYINGASP':'Ont Dyingasp','BARU':'Data baru'})[v] || v; }
@@ -2039,6 +2092,7 @@ function jumpFromHeaderStat(kind){
   document.querySelector('button[data-view="data"]').click();
   state.paket = 'ALL';
   state.status = kind;
+  state.odp = 'ALL';
   state.search = '';
   state.loc = 'ALL';
   document.getElementById('searchInput').value = '';
@@ -2148,6 +2202,31 @@ function renderAlerts(){
           <div class="ac-title">${stale.length} gangguan lebih dari ${staleDays()} hari belum tertangani</div>
           <div class="ac-list">${items}${stale.length>5 ? `<br>+${stale.length-5} lainnya`:''}</div>
           <button type="button" onclick="jumpFromHeaderStat('MASALAH')">Lihat di Pencarian Data &rarr;</button>
+        </div>
+      </div>`;
+  }
+  odpSuspects().forEach(g=>{
+    const items = g.list.slice(0,4).map(r=>`<b>${esc(r['Nama Ruangan']||'-')}</b> (${statusLabel(statusKontrakVal(r))}${statusDays(r) !== null ? ', ' + fmtDurasi(statusDays(r)) : ''})`).join('<br>');
+    html += `
+      <div class="alert-card crit">
+        ${ALERT_ICON}
+        <div class="ac-body">
+          <div class="ac-title">Dugaan gangguan ${g.type === 'ODP' ? 'ODP' : 'di lokasi'}: ${esc(g.name)}</div>
+          <div class="ac-list">${g.list.length} dari ${g.total} pelanggan terdampak. Periksa ${g.type === 'ODP' ? 'ODP dan kabel distribusi' : 'jalur kabel dan perangkat bersama di lokasi ini'} dulu sebelum mengecek ONT satu per satu.<br>${items}${g.list.length>4 ? `<br>+${g.list.length-4} lainnya`:''}</div>
+          <button type="button" data-n="${esc(g.name)}" onclick="jumpToGroup('${g.type}', this.dataset.n)">Lihat pelanggan terdampak &rarr;</button>
+        </div>
+      </div>`;
+  });
+  const rep = repeatList();
+  if(rep.length){
+    const items = rep.slice(0,5).map(x=>`<b>${esc(x.r['Nama Ruangan']||'-')}</b> (${esc(x.r['Lokasi']||'-')}) — ${x.n}x`).join('<br>');
+    html += `
+      <div class="alert-card crit">
+        ${ALERT_ICON}
+        <div class="ac-body">
+          <div class="ac-title">${rep.length} pelanggan gangguan berulang (${REPEAT_MIN}x+ dalam ${REPEAT_DAYS} hari)</div>
+          <div class="ac-list">Biasanya tanda masalah fisik: cek konektor, kabel, dan adaptor/ONT.<br>${items}${rep.length>5 ? `<br>+${rep.length-5} lainnya`:''}</div>
+          <button type="button" onclick="jumpFromHeaderStat('BERULANG')">Lihat di Pencarian Data &rarr;</button>
         </div>
       </div>`;
   }
@@ -2816,6 +2895,7 @@ function recordCardHtml(r){
       </div>
       ${(statusHasNote(statusKontrakVal(r)) && r['Keterangan Nonaktif']) ? `<div class="nonaktif-reason ${statusKontrakVal(r)==='ONT LOS'?'los':(statusKontrakVal(r)==='ONT DYINGASP'?'dying':'')}">${esc(r['Keterangan Nonaktif'])}</div>` : ''}
       ${(isMasalah(statusKontrakVal(r)) && statusDays(r) !== null) ? `<div class="status-since ${statusDays(r) >= staleDays() ? 'stale' : ''}">⏱ ${statusLabel(statusKontrakVal(r))} sejak ${fmtDurasi(statusDays(r))}${statusDays(r) >= staleDays() ? ' — belum tertangani' : ''}</div>` : ''}
+      ${repeatCount(r._id) >= REPEAT_MIN ? `<div class="status-since stale">⟲ ${repeatCount(r._id)}x gangguan dalam ${REPEAT_DAYS} hari — cek fisik (konektor, kabel, adaptor)</div>` : ''}
       ${r['ODP'] ? `<div class="rec-loc odp-line copyable" style="margin-top:2px; opacity:.8; font-size:12px;" onclick="copyField('${escJsAttr(r['ODP'])}','ODP')">${ICON_PLUG} ODP: ${highlightMatch(r['ODP'], state.search)}</div>` : ''}
       <div class="rec-meta">
         <span class="copyable" onclick="copyField('${escJsAttr(r['Customer ID'])}','Customer ID')">ID: <b>${highlightMatch(r['Customer ID']||'-', state.search)}</b> <svg class="copy-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
